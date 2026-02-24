@@ -9,22 +9,20 @@ import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.currentValueOf
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.PlatformTextInputModifierNode
-import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.platform.establishTextInputSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
-// todo: still needed?
-internal class ObservableSoftwareKeyboardController : SoftwareKeyboardController {
-  val requests = MutableStateFlow(false)
+internal class RealObservableSoftwareKeyboardController : ObservableSoftwareKeyboardController {
+  override val showRequests = MutableStateFlow(false)
 
   override fun hide() {
-    requests.tryEmit(false)
+    showRequests.tryEmit(false)
   }
 
   override fun show() {
-    requests.tryEmit(true)
+    showRequests.tryEmit(true)
   }
 }
 
@@ -52,7 +50,7 @@ private class ShowKeyboardOnFocusModifierNode :
       // session to check if the composable is a text field.
       coroutineScope.launch(Dispatchers.Main.immediate) {
         establishTextInputSession {
-          currentValueOf(LocalSoftwareKeyboardController)!!.show()
+          currentValueOf(LocalSoftwareKeyboardController)?.show()
           startInputMethod { TODO("never called in tests") }
         }
       }

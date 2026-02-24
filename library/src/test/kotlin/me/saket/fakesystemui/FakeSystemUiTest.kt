@@ -1,18 +1,30 @@
 package me.saket.fakesystemui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -101,41 +113,41 @@ class FakeSystemUiTest(
   }
 
   @Test fun `show keyboard automatically when a text field is focused`() {
-    TODO()
+    if (systemTheme != SystemTheme.LightMode) {
+      throw AssumptionViolatedException("variant not needed")
+    }
 
-//    if (systemTheme != SystemTheme.LightMode) {
-//      throw AssumptionViolatedException("variant not needed")
-//    }
-//
-//    paparazzi.snapshot {
-//      FakeSystemUi(
-//        showKeyboardByDefault = false,
-//      ) {
-//        Box(
-//          Modifier
-//            .fillMaxSize()
-//            .background(Color.Gray)
-//        ) {
-//          val focusRequester = remember { FocusRequester() }
-//          LaunchedEffect(Unit) { focusRequester.requestFocus() }
-//
-//          BasicTextField(
-//            modifier =
-//              Modifier
-//                .imePadding()
-//                .systemBarsPadding()
-//                .align(Alignment.BottomCenter)
-//                .fillMaxWidth()
-//                .padding(16.dp)
-//                .focusRequester(focusRequester)
-//                .border(1.dp, Color.White, RoundedCornerShape(4.dp))
-//                .padding(16.dp),
-//            state = rememberTextFieldState("Text field"),
-//            textStyle = TextStyle(fontSize = 16.sp, color = Color.White),
-//          )
-//        }
-//      }
-//    }
+    paparazzi.snapshot {
+      FakeSystemUi(
+        showKeyboardByDefault = false,
+      ) {
+        Box(
+          Modifier
+            .fillMaxSize()
+            .background(Color.Gray)
+        ) {
+          val focusRequester = remember { FocusRequester() }
+          LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+          BasicTextField(
+            modifier =
+              Modifier
+                .imePadding()
+                .systemBarsPadding()
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(16.dp)
+                .focusRequester(focusRequester)
+                .border(2.dp, Color.White, RoundedCornerShape(16.dp))
+                .background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                .padding(16.dp),
+            state = rememberTextFieldState("Text field"),
+            textStyle = TextStyle(fontSize = 16.sp, color = Color.White),
+            cursorBrush = SolidColor(Color.Blue),
+          )
+        }
+      }
+    }
   }
 
   @Test fun `tint system bars`() {
@@ -184,7 +196,7 @@ private fun FakeSystemUi(
   FakeSystemUiBuilder {
     StatusBar()
     content()
-    if (showKeyboardByDefault) {
+    if (showKeyboardByDefault || keyboardController.showRequests.collectAsState().value) {
       SoftKeyboard()
     }
     NavigationBar(
