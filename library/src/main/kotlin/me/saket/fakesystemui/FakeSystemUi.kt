@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.graphics.Insets
 import android.view.View
 import android.view.ViewParent
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,10 +60,14 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.roundToIntRect
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.fastFold
 import androidx.core.view.doOnLayout
 import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.toPath
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
+import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetTransformer
 import kotlin.math.sqrt
 import android.view.WindowInsets as ViewWindowInsets
 
@@ -71,15 +77,16 @@ import android.view.WindowInsets as ViewWindowInsets
  * correctly when they're dependent on window insets.
  */
 @Composable
+@RequiresApi(30)  // TODO: can this be removed?
 fun FakeSystemUiBuilder(
+  modifier: Modifier = Modifier,
   content: @Composable FakeSystemUiBuilderScope.() -> Unit,
 ) {
   val hostView = LocalView.current
-  val density = LocalDensity.current
   val colorExtractor = remember { LayoutColorExtractor() }
 
   Box(
-    Modifier
+    modifier
       .fillMaxSize()
       .then(colorExtractor.recordBitmap())
   ) {
@@ -91,24 +98,11 @@ fun FakeSystemUiBuilder(
       )
     }
 
-    val statusBarHeightPx = density.run { builderScope.statusBarHeight.roundToPx() }
-    val navigationBarHeightPx = density.run { builderScope.navigationBarHeight.roundToPx() }
-    val softKeyboardHeightPx = density.run { builderScope.softKeyboardHeight.roundToPx() }
-    val keyboardController = remember { ObservableSoftwareKeyboardController() }
-
-    LaunchedEffect(Unit) {
-      keyboardController.requests.collect { showKeyboard ->
-        val statusBarInsets = Insets.of(0, statusBarHeightPx, 0, 0)
-        val navigationBarInsets = Insets.of(0, 0, 0, navigationBarHeightPx)
-        val keyboardInsets = if (showKeyboard) Insets.of(0, 0, 0, softKeyboardHeightPx) else Insets.NONE
-
-        val insets = ViewWindowInsets.Builder()
-          .setInsets(ViewWindowInsets.Type.statusBars(), statusBarInsets)
-          .setInsetsIgnoringVisibility(ViewWindowInsets.Type.statusBars(), statusBarInsets)
-          .setInsets(ViewWindowInsets.Type.navigationBars(), navigationBarInsets)
-          .setInsetsIgnoringVisibility(ViewWindowInsets.Type.navigationBars(), navigationBarInsets)
-          .setInsets(ViewWindowInsets.Type.ime(), keyboardInsets)
-          .build()
+    LaunchedEffect(builderScope) {
+      builderScope.insetTransformers.collect { transformers ->
+        val insets = transformers.fastFold(initial = ViewWindowInsets.Builder().build()) { result, transformer ->
+          transformer.transform(result)
+        }
 
         // Apply the insets to the root so that they're propagated to fake overlays as well.
         // Dispatch immediately to ensure the insets are measured before layout (important
@@ -126,6 +120,7 @@ fun FakeSystemUiBuilder(
       }
     }
 
+    val keyboardController = remember { ObservableSoftwareKeyboardController() }
     CompositionLocalProvider(
       LocalSoftwareKeyboardController provides keyboardController,
     ) {
@@ -137,11 +132,12 @@ fun FakeSystemUiBuilder(
 }
 
 sealed interface FakeSystemUiBuilderScope : BoxScope {
+
   // todo: document windowLightStatusBar.
   @Composable
   fun StatusBar(
-    windowLightStatusBar: Boolean = true,
     modifier: Modifier = Modifier,
+    windowLightStatusBar: Boolean = true,
   )
 
   /**
@@ -160,22 +156,35 @@ sealed interface FakeSystemUiBuilderScope : BoxScope {
   fun SoftKeyboard(
     modifier: Modifier = Modifier,
   )
+
+  // todo: doc
+  fun registerInsetTransformer(
+    transform: (ViewWindowInsets) -> ViewWindowInsets
+  ): InsetTransformer
+
+  // todo: doc
+  interface InsetTransformer {
+    fun transform(insets: ViewWindowInsets): ViewWindowInsets
+    fun unregister()
+  }
 }
 
+@RequiresApi(30)
 internal class RealFakeSystemUiBuilderScope(
   private val boxScope: BoxScope,
   private val colorExtractor: LayoutColorExtractor,
 ) : FakeSystemUiBuilderScope, BoxScope by boxScope {
 
-  var statusBarHeight by mutableStateOf(0.dp)
-  var navigationBarHeight by mutableStateOf(0.dp)
-  var softKeyboardHeight by mutableStateOf(300.dp)  // todo: dynamic?
+  val insetTransformers = MutableStateFlow(emptyList<InsetTransformer>())
 
   @Composable
   override fun StatusBar(
-    windowLightStatusBar: Boolean,
     modifier: Modifier,
+    windowLightStatusBar: Boolean,
   ) {
+    // todo: could the height be dynamically measured from the layout size?
+    val statusBarHeight = 62.dp
+
     MatchParentPopup {
       Row(
         modifier = modifier
@@ -190,7 +199,7 @@ internal class RealFakeSystemUiBuilderScope(
         val contentColor = if (windowLightStatusBar) Color.Black else Color.White
         BasicText(
           text = "9:00",
-          color = { Color.White },
+          color = { contentColor },
         )
         Spacer(
           Modifier.weight(1f)
@@ -207,6 +216,25 @@ internal class RealFakeSystemUiBuilderScope(
         )
       }
     }
+
+    val density = LocalDensity.current
+    DisposableEffect(density) {
+      val transformer = registerInsetTransformer { insets ->
+        val statusBarInsets = Insets.of(
+          /* left = */ 0,
+          /* top = */ with(density) { statusBarHeight.roundToPx() },
+          /* right = */ 0,
+          /* bottom = */ 0
+        )
+        ViewWindowInsets.Builder(insets)
+          .setInsets(ViewWindowInsets.Type.statusBars(), statusBarInsets)
+          .setInsetsIgnoringVisibility(ViewWindowInsets.Type.statusBars(), statusBarInsets)
+          .build()
+      }
+      onDispose {
+        transformer.unregister()
+      }
+    }
   }
 
   @Composable
@@ -214,8 +242,6 @@ internal class RealFakeSystemUiBuilderScope(
     modifier: Modifier,
     navigationMode: FakeSystemUiNavigationMode
   ) {
-    this.navigationBarHeight = navigationMode.height
-
     MatchParentPopup {
       Box(
         modifier = modifier
@@ -244,13 +270,37 @@ internal class RealFakeSystemUiBuilderScope(
           .setTag(LayoutColorExtractor.ExcludedFromColorExtractionTag, Unit)
       }
     }
+
+    val density = LocalDensity.current
+    DisposableEffect(density) {
+      val transformer = registerInsetTransformer { insets ->
+        val navigationBarInsets = Insets.of(
+          /* left = */ 0,
+          /* top = */ 0,
+          /* right = */ 0,
+          /* bottom = */ with(density) { navigationMode.height.roundToPx() }
+        )
+        ViewWindowInsets.Builder(insets)
+          .setInsets(ViewWindowInsets.Type.navigationBars(), navigationBarInsets)
+          .setInsetsIgnoringVisibility(ViewWindowInsets.Type.navigationBars(), navigationBarInsets)
+          .build()
+      }
+      onDispose {
+        transformer.unregister()
+      }
+    }
   }
 
   @Composable
   @OptIn(ExperimentalLayoutApi::class)
   override fun SoftKeyboard(modifier: Modifier) {
+    val keyboardHeight = 300.dp
+
     Column(
       modifier = modifier
+        .align(Alignment.BottomCenter)
+        .fillMaxWidth()
+        .height(keyboardHeight)
         .background(Color.DarkGray) // TODO: light mode colors.
         .padding(WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues())
         .padding(top = 8.dp),
@@ -286,83 +336,45 @@ internal class RealFakeSystemUiBuilderScope(
           .background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(32.dp))
       )
     }
+
+    val density = LocalDensity.current
+    DisposableEffect(density) {
+      val transformer = registerInsetTransformer { insets ->
+        val keyboardInsets = Insets.of(
+          /* left = */
+          0, /* top = */
+          0, /* right = */
+          0, /* bottom = */
+          with(density) { keyboardHeight.roundToPx() },
+        )
+        ViewWindowInsets.Builder(insets)
+          .setInsets(ViewWindowInsets.Type.ime(), keyboardInsets)
+          .build()
+      }
+      onDispose {
+        transformer.unregister()
+      }
+    }
+  }
+
+  override fun registerInsetTransformer(transform: (ViewWindowInsets) -> ViewWindowInsets): InsetTransformer {
+    val transformer = object : InsetTransformer {
+      override fun transform(insets: ViewWindowInsets): ViewWindowInsets {
+        return transform(insets)
+      }
+
+      override fun unregister() {
+        insetTransformers.update { existing ->
+          existing - this
+        }
+      }
+    }
+    insetTransformers.update { existing ->
+      existing + transformer
+    }
+    return transformer
   }
 }
-
-//@Composable
-//@RequiresApi(30)
-//@OptIn(ExperimentalLayoutApi::class)
-//fun FakeSystemUiBuilderScope.FakeSystemUi(
-//  navigationMode: FakeSystemUiNavigationMode = FakeSystemUiNavigationMode.ThreeButtonNavigation(),
-//  showKeyboardByDefault: Boolean = false,
-//  content: @Composable () -> Unit,
-//) {
-//  val hostView = LocalView.current
-//  val density = LocalDensity.current
-//  val statusBarHeight = 62.dp
-//  val statusBarHeightPx = density.run { statusBarHeight.roundToPx() }
-//  val navigationBarHeightPx = density.run { navigationMode.height.roundToPx() }
-//
-//  val keyboardController = remember { FakeSoftwareKeyboardController(showKeyboardByDefault) }
-//  val keyboardHeightPx =
-//    if (keyboardController.isVisible) {
-//      density.run { 300.dp.roundToPx() }
-//    } else {
-//      null
-//    }
-//
-//  LaunchedEffect(keyboardController.isVisible) {
-//    val statusBarInsets = Insets.of(0, statusBarHeightPx, 0, 0)
-//    val navigationBarInsets = Insets.of(0, 0, 0, navigationBarHeightPx)
-//    val keyboardInsets = keyboardHeightPx?.let { Insets.of(0, 0, 0, it) }
-//
-//    val insets =
-//      ViewWindowInsets.Builder()
-//        .setInsets(ViewWindowInsets.Type.statusBars(), statusBarInsets)
-//        .setInsetsIgnoringVisibility(ViewWindowInsets.Type.statusBars(), statusBarInsets)
-//        .setInsets(ViewWindowInsets.Type.navigationBars(), navigationBarInsets)
-//        .setInsetsIgnoringVisibility(ViewWindowInsets.Type.navigationBars(), navigationBarInsets)
-//        .setInsets(ViewWindowInsets.Type.ime(), keyboardInsets ?: Insets.NONE)
-//        .build()
-//
-//    // Apply the insets to the root so that they're propagated to fake overlays as well.
-//    with(hostView.rootView) {
-//      // FIXME: I feel like we shouldn't have to dispatch these insets twice, but different tests
-//      //  fail if we omit either the immediate dispatch or the `doOnLayout` dispatch
-//
-//      // Dispatch immediately to ensure the insets are
-//      // measured before layout (important for scrolling).
-//      dispatchApplyWindowInsets(insets)
-//      dispatchWindowInsetsAnimationProgress(insets, emptyList())
-//
-//      // Dispatch again because some of the overlay tests don't work correctly without it:
-//      doOnLayout { view ->
-//        view.dispatchApplyWindowInsets(insets)
-//        view.dispatchWindowInsetsAnimationProgress(insets, emptyList())
-//      }
-//    }
-//  }
-//
-//  val colorExtractor = remember { LayoutColorExtractor() }
-//
-//  val scope = this
-//
-//  Box(
-//    Modifier
-//      .fillMaxSize()
-//      .then(colorExtractor.recordBitmap())
-//  ) {
-//    CompositionLocalProvider(LocalSoftwareKeyboardController provides keyboardController) {
-//      Box(Modifier.showKeyboardOnFocus()) { content() }
-//    }
-//    if (keyboardController.isVisible) {
-//      scope.SoftKeyboard()
-//    }
-//  }
-//
-//  StatusBar()
-//  NavigationBar()
-//}
 
 /** Applies a tint to all canvas drawings made by downstream modifiers. */
 @Composable
@@ -396,36 +408,6 @@ private fun Modifier.tint(color: () -> Color): Modifier {
         it.restore()
       }
     }
-  }
-}
-
-private object BackButtonShape : Shape {
-  override fun createOutline(
-    size: Size,
-    layoutDirection: LayoutDirection,
-    density: Density,
-  ): Outline {
-    val cornerRadius = size.height / 10f
-    val halfCornerRadius = cornerRadius / 2
-    val height = size.height + cornerRadius
-    val width = sqrt((height * height) - (height / 2) * (height / 2))
-    val xOffset = (size.width - width - halfCornerRadius) / 2
-
-    val roundedPolygon =
-      RoundedPolygon(
-        vertices =
-          floatArrayOf(
-            xOffset + width,
-            -halfCornerRadius,
-            xOffset + width,
-            size.height + halfCornerRadius,
-            xOffset,
-            size.height / 2,
-          ),
-        rounding = CornerRounding(radius = cornerRadius),
-      )
-
-    return Outline.Generic(roundedPolygon.toPath().asComposePath())
   }
 }
 

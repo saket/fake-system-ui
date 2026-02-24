@@ -1,5 +1,6 @@
 package me.saket.fakesystemui
 
+import android.annotation.SuppressLint
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusEventModifierNode
 import androidx.compose.ui.focus.FocusState
@@ -14,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
+// todo: still needed?
 internal class ObservableSoftwareKeyboardController : SoftwareKeyboardController {
   val requests = MutableStateFlow(false)
 
@@ -30,6 +32,7 @@ internal fun Modifier.showKeyboardOnFocus(): Modifier {
   return this.then(ShowKeyboardOnFocusModifierElement)
 }
 
+@SuppressLint("ModifierNodeInspectableProperties")
 private data object ShowKeyboardOnFocusModifierElement :
   ModifierNodeElement<ShowKeyboardOnFocusModifierNode>() {
   override fun create() = ShowKeyboardOnFocusModifierNode()
