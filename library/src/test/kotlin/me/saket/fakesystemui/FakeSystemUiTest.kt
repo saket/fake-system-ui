@@ -1,5 +1,8 @@
 package me.saket.fakesystemui
 
+import androidx.compose.animation.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -7,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -25,6 +29,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -176,12 +181,34 @@ class FakeSystemUiTest(
     }
   }
 
-  @Test fun `auto tint navigation bar based on content underneath`() {
-    TODO()
-  }
+  @Test fun `auto tint navigation bar based on content underneath in real time`() {
+    if (systemTheme != SystemTheme.LightMode) {
+      throw AssumptionViolatedException("variant not needed")
+    }
 
-  @Test fun `auto tint navigation bar based on content underneath (real time)`() {
-    TODO()
+    paparazzi.gif(end = 1000) {
+      val backgroundColor = remember { Animatable(Color.White) }
+      LaunchedEffect(Unit) {
+        backgroundColor.animateTo(Color.Black, animationSpec = tween(500, easing = LinearEasing))
+        backgroundColor.animateTo(Color.White, animationSpec = tween(500, easing = LinearEasing))
+      }
+
+      FakeSystemUi(navigationMode = NavigationMode.GestureNavigation) {
+        Box(
+          Modifier
+            .fillMaxSize()
+            .background(Color.Gray)
+        ) {
+          Box(
+            Modifier
+              .fillMaxWidth()
+              .height(60.dp)
+              .align(Alignment.BottomCenter)
+              .background(backgroundColor.value)
+          )
+        }
+      }
+    }
   }
 }
 
@@ -196,6 +223,7 @@ enum class NavigationMode {
   ThreeButtons,
 }
 
+// todo: offer a default implementation for FakeSystemUiBuilder.
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun FakeSystemUi(
@@ -216,4 +244,21 @@ private fun FakeSystemUi(
       },
     )
   }
+}
+
+// todo: upstream this to Paparazzi.
+private fun Paparazzi.gif(
+  start: Long = 0L,
+  end: Long = 500L,
+  fps: Int = 30,
+  composable: @Composable () -> Unit,
+) {
+  gif(
+    view = ComposeView(context).apply {
+      setContent(composable)
+    },
+    start = start,
+    end = end,
+    fps = fps,
+  )
 }
