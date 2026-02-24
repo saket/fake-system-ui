@@ -150,20 +150,30 @@ class FakeSystemUiTest(
     }
   }
 
-  @Test fun `tint system bars`() {
-    TODO()
+  @Test fun `tinted system bars`() {
+    if (systemTheme != SystemTheme.DarkMode) {
+      throw AssumptionViolatedException("variant not needed")
+    }
 
-//    paparazzi.snapshot {
-//      FakeSystemUi {
-//        ChromeConfig(useLightIconsInLightMode = false)
-//
-//        Box(
-//          Modifier
-//            .fillMaxSize()
-//            .background(if (isSystemInDarkTheme()) Color.Black else Color.White)
-//        )
-//      }
-//    }
+    paparazzi.snapshot {
+      FakeSystemUiBuilder {
+        StatusBar(
+          windowLightStatusBar = false,
+        )
+        NavigationBar(
+          navigationMode = FakeSystemUiNavigationMode.ThreeButtonNavigation(
+            buttonColor = Color.Yellow,
+            scrimColor = Color.Yellow.copy(alpha = 0.2f),
+          )
+        )
+
+        Box(
+          Modifier
+            .fillMaxSize()
+            .background(Color.DarkGray)
+        )
+      }
+    }
   }
 
   @Test fun `auto tint navigation bar based on content underneath`() {
