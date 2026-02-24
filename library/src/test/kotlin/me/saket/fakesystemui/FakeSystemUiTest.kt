@@ -59,10 +59,6 @@ class FakeSystemUiTest(
   @Test fun `system bars`(
     @TestParameter navigationMode: NavigationMode,
   ) {
-    if (systemTheme != SystemTheme.LightMode) {
-      throw AssumptionViolatedException("variant not needed")
-    }
-
     paparazzi.snapshot {
       FakeSystemUi(navigationMode) {
         Box(
