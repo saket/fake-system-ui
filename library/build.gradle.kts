@@ -36,11 +36,8 @@ dependencies {
   implementation(libs.androidx.shapes)
 
   testImplementation(libs.junit)
+  testImplementation(libs.testParameterInjector)
   testImplementation(libs.telephoto)
-
-  // TODO: this needs to be testImplementation, but paparazzi currently fails
-  //  to resolve a dependency's resources unless its part of the main sources.
-  debugImplementation(libs.androidx.compose.material3)
 }
 
 // Used on CI to prevent publishing of non-snapshot versions.

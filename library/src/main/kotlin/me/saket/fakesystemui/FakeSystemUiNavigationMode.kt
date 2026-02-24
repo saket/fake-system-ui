@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -26,6 +27,8 @@ import kotlin.math.sqrt
 
 // todo: does the height need to be hardcoded? can it be measured instead?
 // todo: rename to FakeNavigationMode?
+// todo: rethink its name now that this is no longer an enum
+@Stable
 abstract class FakeSystemUiNavigationMode(
   val height: Dp,
   val tintBasedOnUnderneathContent: Boolean,
