@@ -16,10 +16,9 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.util.fastFold
 import androidx.core.view.doOnLayout
-import com.android.layoutlib.bridge.bars.StatusBar
 import kotlinx.coroutines.flow.MutableStateFlow
-import me.saket.fakesystemui.NavigationBarAppearance.GestureNavigation
-import me.saket.fakesystemui.NavigationBarAppearance.ThreeButtonNavigation
+import me.saket.fakesystemui.FakeNavigationBarAppearance.GestureNavigation
+import me.saket.fakesystemui.FakeNavigationBarAppearance.ThreeButtonNavigation
 import me.saket.fakesystemui.internal.LayoutColorExtractor
 import me.saket.fakesystemui.internal.RealFakeSystemUiBuilderScope
 import me.saket.fakesystemui.internal.RealObservableSoftwareKeyboardController
@@ -46,14 +45,14 @@ import android.view.WindowInsets as ViewWindowInsets
  * ```
  *
  * @param navigationBarAppearance Used to decide which system navigation style to render.
- *   [NavigationBarAppearance.ThreeButtonNavigation] is used by default because it is the trickier
+ *   [FakeNavigationBarAppearance.ThreeButtonNavigation] is used by default because it is the trickier
  *   style to get right. If your screen looks good with three-button navigation, then it probably
  *   looks good with gesture navigation.
  */
 @Composable
 @RequiresApi(30)  // TODO: can this be removed?
 fun FakeSystemUi(
-  navigationBarAppearance: NavigationBarAppearance = ThreeButtonNavigation,
+  navigationBarAppearance: FakeNavigationBarAppearance = ThreeButtonNavigation,
   showKeyboardByDefault: Boolean = false,
   content: @Composable () -> Unit,
 ) {
@@ -170,7 +169,7 @@ interface ObservableSoftwareKeyboardController : SoftwareKeyboardController {
 }
 
 /** This is an enum so that it can be easily used with any parameterized test runner. */
-enum class NavigationBarAppearance {
+enum class FakeNavigationBarAppearance {
   GestureNavigation,
   ThreeButtonNavigation,
 }

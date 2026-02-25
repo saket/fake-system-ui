@@ -55,7 +55,7 @@ class FakeSystemUiTest(
   )
 
   @Test fun `system bars`(
-    @TestParameter navigationBarAppearance: NavigationBarAppearance,
+    @TestParameter navigationBarAppearance: FakeNavigationBarAppearance,
   ) {
     paparazzi.snapshot {
       FakeSystemUi(navigationBarAppearance) {
@@ -84,7 +84,7 @@ class FakeSystemUiTest(
   }
 
   @Test fun `show keyboard by default`(
-    @TestParameter navigationBarAppearance: NavigationBarAppearance,
+    @TestParameter navigationBarAppearance: FakeNavigationBarAppearance,
   ) {
     paparazzi.snapshot {
       FakeSystemUi(
@@ -122,7 +122,7 @@ class FakeSystemUiTest(
     paparazzi.snapshot {
       FakeSystemUi(
         showKeyboardByDefault = false,
-        navigationBarAppearance = NavigationBarAppearance.GestureNavigation,
+        navigationBarAppearance = FakeNavigationBarAppearance.GestureNavigation,
       ) {
         Box(
           Modifier
@@ -189,7 +189,7 @@ class FakeSystemUiTest(
         backgroundColor.animateTo(Color.White, animationSpec = tween(500, easing = LinearEasing))
       }
 
-      FakeSystemUi(navigationBarAppearance = NavigationBarAppearance.GestureNavigation) {
+      FakeSystemUi(navigationBarAppearance = FakeNavigationBarAppearance.GestureNavigation) {
         Box(
           Modifier
             .fillMaxSize()
