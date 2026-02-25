@@ -83,11 +83,13 @@ class FakeSystemUiTest(
     }
   }
 
-  @Test fun `show keyboard by default`() {
+  @Test fun `show keyboard by default`(
+    @TestParameter navigationBarAppearance: NavigationBarAppearance,
+  ) {
     paparazzi.snapshot {
       FakeSystemUi(
         showKeyboardByDefault = true,
-        navigationBarAppearance = NavigationBarAppearance.GestureNavigation,
+        navigationBarAppearance = navigationBarAppearance,
       ) {
         Box(
           Modifier
