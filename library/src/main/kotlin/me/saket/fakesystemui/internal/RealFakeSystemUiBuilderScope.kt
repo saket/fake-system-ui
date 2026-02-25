@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
@@ -35,11 +36,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.toRect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.boundsInRoot
@@ -48,17 +53,22 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.roundToIntRect
 import androidx.compose.ui.unit.sp
+import androidx.graphics.shapes.CornerRounding
+import androidx.graphics.shapes.RoundedPolygon
+import androidx.graphics.shapes.toPath
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import me.saket.fakesystemui.FakeSystemUiBuilderScope
 import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetTransformer
-import me.saket.fakesystemui.FakeSystemUiNavigationMode
 import me.saket.fakesystemui.ObservableSoftwareKeyboardController
-import kotlin.text.iterator
+import kotlin.math.sqrt
 
 @RequiresApi(30)
 internal class RealFakeSystemUiBuilderScope(
@@ -77,7 +87,7 @@ internal class RealFakeSystemUiBuilderScope(
     // todo: could the height be dynamically measured from the layout size?
     val statusBarHeight = 62.dp
 
-    MatchParentPopup {
+    MatchParentWidthPopup {
       Row(
         modifier = modifier
           .fillMaxSize()
@@ -131,26 +141,62 @@ internal class RealFakeSystemUiBuilderScope(
   }
 
   @Composable
-  override fun NavigationBar(
-    modifier: Modifier,
-    navigationMode: FakeSystemUiNavigationMode
-  ) {
-    MatchParentPopup {
+  override fun GestureNavigationBar(modifier: Modifier) {
+    // todo: does the height need to be hardcoded? can it be measured instead?
+    NavigationBar(modifier, height = 24.dp) {
       Box(
-        modifier = modifier
+        Modifier
+          .align(Alignment.Center)
+          .tintBasedOnUnderneathContent(colorExtractor)
+          .size(width = 100.dp, height = 4.dp)
+          .background(Color.Black, RoundedCornerShape(4.dp))
+      )
+    }
+  }
+
+  @Composable
+  override fun ThreeButtonNavigationBar(modifier: Modifier, buttonColor: Color, scrimColor: Color) {
+    NavigationBar(modifier, height = 48.dp) {
+      Row(
+        modifier = Modifier
+          .fillMaxSize()
+          .background(scrimColor),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Box(
+          Modifier
+            .size(16.dp)
+            .background(buttonColor, BackButtonShape)
+        )
+        Box(
+          Modifier
+            .size(16.dp)
+            .background(buttonColor, CircleShape)
+        )
+        Box(
+          Modifier
+            .size(16.dp)
+            .background(buttonColor, RoundedCornerShape(size = 4.dp))
+        )
+      }
+    }
+  }
+
+  @Composable
+  private fun NavigationBar(
+    modifier: Modifier,
+    height: Dp,
+    content: @Composable () -> Unit,
+  ) {
+    MatchParentWidthPopup {
+      Box(
+        modifier
           .fillMaxSize()
           .wrapContentHeight(align = Alignment.Bottom)
-          .height(navigationMode.height)
-          .then(
-            if (navigationMode.tintBasedOnUnderneathContent) {
-              Modifier.tintBasedOnUnderneathContent(colorExtractor)
-            } else {
-              Modifier
-            }
-          ),
-        contentAlignment = Alignment.Center,
+          .requiredHeight(height)
       ) {
-        navigationMode.Content()
+        content()
       }
 
       // Hide the navigation bar from the screenshot used for color extraction. A simpler solution
@@ -171,7 +217,7 @@ internal class RealFakeSystemUiBuilderScope(
           /* left = */ 0,
           /* top = */ 0,
           /* right = */ 0,
-          /* bottom = */ with(density) { navigationMode.height.roundToPx() }
+          /* bottom = */ with(density) { height.roundToPx() }
         )
         WindowInsets.Builder(insets)
           .setInsets(WindowInsets.Type.navigationBars(), navigationBarInsets)
@@ -313,3 +359,31 @@ private tailrec fun View.findParentById(id: Int, current: ViewParent? = parent):
   val next = current?.parent ?: error("no parent found with id = $id")
   return findParentById(id, next)
 }
+
+private object BackButtonShape : Shape {
+  override fun createOutline(
+    size: Size,
+    layoutDirection: LayoutDirection,
+    density: Density,
+  ): Outline {
+    val cornerRadius = size.height / 10f
+    val halfCornerRadius = cornerRadius / 2
+    val height = size.height + cornerRadius
+    val width = sqrt((height * height) - (height / 2) * (height / 2))
+    val xOffset = (size.width - width - halfCornerRadius) / 2
+
+    val roundedPolygon = RoundedPolygon(
+      vertices = floatArrayOf(
+        xOffset + width,
+        -halfCornerRadius,
+        xOffset + width,
+        size.height + halfCornerRadius,
+        xOffset,
+        size.height / 2,
+      ),
+      rounding = CornerRounding(radius = cornerRadius),
+    )
+    return Outline.Generic(roundedPolygon.toPath().asComposePath())
+  }
+}
+

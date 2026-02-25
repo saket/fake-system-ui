@@ -20,7 +20,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 // (b) Dialog() has inflexible styling
 // (c) Modifier.fillMaxWidth() doesn't work in popups
 @Composable
-internal fun MatchParentPopup(
+internal fun MatchParentWidthPopup(
   content: @Composable () -> Unit,
 ) {
   val hostView = LocalView.current

@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,7 +20,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,10 +55,10 @@ class FakeSystemUiTest(
   )
 
   @Test fun `system bars`(
-    @TestParameter navigationMode: NavigationMode,
+    @TestParameter navigationBarAppearance: NavigationBarAppearance,
   ) {
     paparazzi.snapshot {
-      FakeSystemUi(navigationMode) {
+      FakeSystemUi(navigationBarAppearance) {
         Box(
           Modifier
             .fillMaxSize()
@@ -89,6 +87,7 @@ class FakeSystemUiTest(
     paparazzi.snapshot {
       FakeSystemUi(
         showKeyboardByDefault = true,
+        navigationBarAppearance = NavigationBarAppearance.GestureNavigation,
       ) {
         Box(
           Modifier
@@ -121,6 +120,7 @@ class FakeSystemUiTest(
     paparazzi.snapshot {
       FakeSystemUi(
         showKeyboardByDefault = false,
+        navigationBarAppearance = NavigationBarAppearance.GestureNavigation,
       ) {
         Box(
           Modifier
@@ -161,11 +161,9 @@ class FakeSystemUiTest(
         StatusBar(
           windowLightStatusBar = false,
         )
-        NavigationBar(
-          navigationMode = FakeSystemUiNavigationMode.ThreeButtonNavigation(
-            buttonColor = Color.Yellow,
-            scrimColor = Color.Yellow.copy(alpha = 0.2f),
-          )
+        ThreeButtonNavigationBar(
+          buttonColor = Color.Yellow,
+          scrimColor = Color.Yellow.copy(alpha = 0.2f),
         )
 
         Box(
@@ -189,7 +187,7 @@ class FakeSystemUiTest(
         backgroundColor.animateTo(Color.White, animationSpec = tween(500, easing = LinearEasing))
       }
 
-      FakeSystemUi(navigationMode = NavigationMode.GestureNavigation) {
+      FakeSystemUi(navigationBarAppearance = NavigationBarAppearance.GestureNavigation) {
         Box(
           Modifier
             .fillMaxSize()
@@ -212,34 +210,6 @@ class FakeSystemUiTest(
 enum class SystemTheme(val nightMode: NightMode) {
   DarkMode(NightMode.NIGHT),
   LightMode(NightMode.NOTNIGHT),
-}
-
-enum class NavigationMode {
-  GestureNavigation,
-  ThreeButtons,
-}
-
-// todo: offer a default implementation for FakeSystemUiBuilder.
-@Composable
-@OptIn(ExperimentalLayoutApi::class)
-private fun FakeSystemUi(
-  navigationMode: NavigationMode = NavigationMode.GestureNavigation,
-  showKeyboardByDefault: Boolean = false,
-  content: @Composable () -> Unit,
-) {
-  FakeSystemUiBuilder {
-    StatusBar()
-    content()
-    if (showKeyboardByDefault || keyboardController.showRequests.collectAsState().value) {
-      SoftKeyboard()
-    }
-    NavigationBar(
-      navigationMode = when (navigationMode) {
-        NavigationMode.GestureNavigation -> FakeSystemUiNavigationMode.GestureNavigation()
-        NavigationMode.ThreeButtons -> FakeSystemUiNavigationMode.ThreeButtonNavigation()
-      },
-    )
-  }
 }
 
 // todo: upstream this to Paparazzi.
