@@ -2,7 +2,6 @@ package me.saket.fakesystemui
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas as AndroidCanvas
 import android.graphics.RenderNode
 import android.media.ImageReader
 import android.view.AttachInfo_Accessor
@@ -19,6 +18,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.core.content.getSystemService
 import androidx.core.graphics.createBitmap
 import java.nio.ByteBuffer
+import android.graphics.Canvas as AndroidCanvas
 
 /**
  * Captures hardware-accelerated Canvas drawings into a [Bitmap] using LayoutLib's rendering
@@ -33,12 +33,11 @@ internal class LayoutLibRenderNodeRecorder(context: Context, private val size: I
   private val renderNode = RenderNode("recorder")
   private val renderNodeDrawer = RenderNodeDrawer(context, renderNode)
 
-  private val hwRenderer: LayoutlibRenderer =
-    retainWindowManagerRoot(context) {
-      AttachInfo_Accessor.setAttachInfo(renderNodeDrawer).also {
-        it.setup(size.width, size.height, renderNodeDrawer)
-      }
+  private val hwRenderer: LayoutlibRenderer = retainWindowManagerRoot(context) {
+    AttachInfo_Accessor.setAttachInfo(renderNodeDrawer).also {
+      it.setup(size.width, size.height, renderNodeDrawer)
     }
+  }
 
   fun record(recorder: (Canvas) -> Unit): Bitmap {
     try {
@@ -53,10 +52,7 @@ internal class LayoutLibRenderNodeRecorder(context: Context, private val size: I
     return hwRenderer.buffer.toBitmap(size)
   }
 
-  /**
-   * A dummy ViewGroup for layoutlib, whose renderer requires an independent ViewGroup that can be
-   * recorded.
-   */
+  /** A dummy ViewGroup for layoutlib, whose renderer requires an independent ViewGroup that can be recorded. */
   private class RenderNodeDrawer(context: Context, private val node: RenderNode) :
     FrameLayout(context) {
 
@@ -68,12 +64,11 @@ internal class LayoutLibRenderNodeRecorder(context: Context, private val size: I
 
 private fun <R> retainWindowManagerRoot(context: Context, action: () -> R): R {
   val wm = context.getSystemService<WindowManager>() as WindowManagerImpl
-  val oldRoot: ViewGroup =
-    WindowManagerImpl::class
-      .java
-      .getDeclaredField("mBaseRootView")
-      .also { it.isAccessible = true }
-      .get(wm) as ViewGroup
+  val oldRoot: ViewGroup = WindowManagerImpl::class
+    .java
+    .getDeclaredField("mBaseRootView")
+    .also { it.isAccessible = true }
+    .get(wm) as ViewGroup
 
   return action().also {
     // LayoutLib assumes that any View it captures must be the window's root view.

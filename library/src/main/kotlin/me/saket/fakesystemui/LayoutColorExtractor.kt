@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.roundToIntSize
 import androidx.core.content.getSystemService
 import androidx.core.graphics.get
 import androidx.core.view.children
-import me.saket.fakesystemui.R
 
 @Stable
 @RequiresApi(29)
@@ -37,32 +36,31 @@ internal class LayoutColorExtractor {
 
   @Suppress("NAME_SHADOWING")
   fun extractColorFromBounds(bounds: (Bitmap) -> IntRect): Color? {
-    val bitmap =
-      lastBitmap
-        ?: if (isScreenshotInProgress) return null else error("bitmap hasn't been extracted yet")
+    val bitmap = lastBitmap
+      ?: if (isScreenshotInProgress) return null else error("bitmap hasn't been extracted yet")
     val bounds = bounds(bitmap)
 
     // Down-scaling a bitmap to 1px is one of the fastest way of extracting its prominent color.
-    val onePxBitmap =
-      Bitmap.createBitmap(
-        /* source = */ bitmap,
-        /* x = */ bounds.left,
-        /* y = */ bounds.top,
-        /* width = */ bounds.width,
-        /* height = */ bounds.height,
-        /* m = */ matrix.also {
-          it.reset()
-          it.postScale(1f / bounds.width, 1f / bounds.height)
-        },
-        // Average the pixels rather than dropping.
-        /* filter = */ true,
-      )
-        .also {
-          if (it.config == Bitmap.Config.HARDWARE) {
-            it.setConfig(Bitmap.Config.ARGB_8888)
-          }
+    val onePixelBitmap = Bitmap.createBitmap(
+      /* source = */ bitmap,
+      /* x = */ bounds.left,
+      /* y = */ bounds.top,
+      /* width = */ bounds.width,
+      /* height = */ bounds.height,
+      /* m = */
+      matrix.also {
+        it.reset()
+        it.postScale(1f / bounds.width, 1f / bounds.height)
+      },
+      // Average the pixels rather than dropping.
+      /* filter = */ true,
+    )
+      .also {
+        if (it.config == Bitmap.Config.HARDWARE) {
+          it.setConfig(Bitmap.Config.ARGB_8888)
         }
-    return Color(onePxBitmap[0, 0])
+      }
+    return Color(onePixelBitmap[0, 0])
   }
 
   @Composable
@@ -75,27 +73,26 @@ internal class LayoutColorExtractor {
       onDrawWithContent {
         this@onDrawWithContent.drawContent()
 
-        lastBitmap =
-          recorder.record { canvas ->
-            isScreenshotInProgress = true
-            draw(
-              density = this,
-              layoutDirection = this.layoutDirection,
-              canvas = canvas,
-              size = this.size,
-            ) {
-              this@onDrawWithContent.drawContent()
-            }
-
-            // Include any popups that might be visible as well.
-            context.findWindowManagerRootView()?.let { overlays ->
-              overlays.children
-                .filter { it.getTag(ExcludedFromColorExtractionTag) == null }
-                .sortedByDescending { it.z }
-                .forEach { it.draw(canvas.nativeCanvas) }
-            }
-            isScreenshotInProgress = false
+        lastBitmap = recorder.record { canvas ->
+          isScreenshotInProgress = true
+          draw(
+            density = this,
+            layoutDirection = this.layoutDirection,
+            canvas = canvas,
+            size = this.size,
+          ) {
+            this@onDrawWithContent.drawContent()
           }
+
+          // Include any popups that might be visible as well.
+          context.findWindowManagerRootView()?.let { overlays ->
+            overlays.children
+              .filter { it.getTag(ExcludedFromColorExtractionTag) == null }
+              .sortedByDescending { it.z }
+              .forEach { it.draw(canvas.nativeCanvas) }
+          }
+          isScreenshotInProgress = false
+        }
 
         // todo: find a way to get rid of this as it causes an infinite draw loop.
         overlayDrawTrigger++
