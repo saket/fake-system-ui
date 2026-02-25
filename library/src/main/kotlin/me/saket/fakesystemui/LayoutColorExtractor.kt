@@ -7,6 +7,7 @@ import android.graphics.Matrix
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.WindowManagerImpl
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -27,6 +28,7 @@ import androidx.core.view.children
 import me.saket.fakesystemui.R
 
 @Stable
+@RequiresApi(29)
 internal class LayoutColorExtractor {
   private val matrix = Matrix()
   private var lastBitmap: Bitmap? by mutableStateOf(null)

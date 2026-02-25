@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.WindowManagerImpl
 import android.widget.FrameLayout
+import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.unit.IntSize
@@ -27,6 +28,7 @@ import java.nio.ByteBuffer
  * animations, overscroll effects, etc. in Paparazzi tests where other screenshot APIs (e.g.,
  * [GraphicsLayer], [ThreadedRenderer], [ImageReader]) are unsupported.
  */
+@RequiresApi(29)
 internal class LayoutLibRenderNodeRecorder(context: Context, private val size: IntSize) {
   private val renderNode = RenderNode("recorder")
   private val renderNodeDrawer = RenderNodeDrawer(context, renderNode)
