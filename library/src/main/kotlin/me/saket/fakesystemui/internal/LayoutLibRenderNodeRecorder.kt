@@ -1,4 +1,4 @@
-package me.saket.fakesystemui
+package me.saket.fakesystemui.internal
 
 import android.content.Context
 import android.graphics.Bitmap

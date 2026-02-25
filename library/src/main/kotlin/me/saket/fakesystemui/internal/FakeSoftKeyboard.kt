@@ -1,4 +1,4 @@
-package me.saket.fakesystemui
+package me.saket.fakesystemui.internal
 
 import android.annotation.SuppressLint
 import androidx.compose.ui.Modifier
@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.establishTextInputSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import me.saket.fakesystemui.ObservableSoftwareKeyboardController
 
 internal class RealObservableSoftwareKeyboardController : ObservableSoftwareKeyboardController {
   override val showRequests = MutableStateFlow(false)

@@ -1,4 +1,4 @@
-package me.saket.fakesystemui
+package me.saket.fakesystemui.internal
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.roundToIntSize
 import androidx.core.content.getSystemService
 import androidx.core.graphics.get
 import androidx.core.view.children
+import me.saket.fakesystemui.R
 
 @Stable
 @RequiresApi(29)
