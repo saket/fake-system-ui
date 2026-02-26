@@ -176,6 +176,49 @@ interface FakeSystemUiBuilderScope : BoxScope {
     modifier: Modifier = Modifier,
   )
 
+  // todo:
+  //  - doc.
+  //  - usage isn't great. why does someone need to both render and handwrite the inset size?
+  /**
+   * ```kotlin
+   * @Composable
+   * fun FakeSystemUiBuilderScope.Foo() {
+   *   // Display the system UI overlay.
+   *   Overlay {
+   *     Box(
+   *       Modifier
+   *         .fillMaxWidth()
+   *         .height(42.dp)
+   *         .background(Color.Red)
+   *     )
+   *   }
+   *
+   *   // Dispatch its insets.
+   *   DisposableEffect(density) {
+   *     val transformer = registerInsetTransformer { insets ->
+   *       val statusBarInsets = Insets.of(
+   *         /* left = */ 0,
+   *         /* top = */ 42,
+   *         /* right = */ 0,
+   *         /* bottom = */ 0
+   *       )
+   *       WindowInsets.Builder(insets)
+   *         .setInsets(WindowInsets.Type…, statusBarInsets)
+   *         .setInsetsIgnoringVisibility(WindowInsets.Type…, statusBarInsets)
+   *         .build()
+   *     }
+   *     onDispose {
+   *       transformer.unregister()
+   *     }
+   *   }
+   * }
+   * ```
+   */
+  @Composable
+  fun Overlay(
+    content: @Composable () -> Unit,
+  )
+
   // todo: doc
   fun registerInsetTransformer(
     transform: (ViewWindowInsets) -> ViewWindowInsets

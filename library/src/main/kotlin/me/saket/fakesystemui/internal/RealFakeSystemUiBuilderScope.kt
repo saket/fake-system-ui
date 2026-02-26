@@ -82,18 +82,15 @@ internal class RealFakeSystemUiBuilderScope(
   val insetTransformers = MutableStateFlow(emptyList<InsetTransformer>())
 
   @Composable
-  override fun StatusBar(
-    modifier: Modifier,
-  ) {
+  override fun StatusBar(modifier: Modifier) {
     // todo: could the height be dynamically measured from the layout size?
     val statusBarHeight = 62.dp
     val contentColor = if (windowFlags.lightStatusBar) Color.Black else Color.White
 
-    MatchParentWidthPopup {
+    Overlay {
       Row(
         modifier = modifier
-          .fillMaxSize()
-          .wrapContentHeight(align = Alignment.Top)
+          .fillMaxWidth()
           .height(statusBarHeight)
           .padding(horizontal = 16.dp)
           .clearAndSetSemantics {},
@@ -206,7 +203,7 @@ internal class RealFakeSystemUiBuilderScope(
     height: Dp,
     content: @Composable () -> Unit,
   ) {
-    MatchParentWidthPopup {
+    Overlay {
       Box(
         modifier
           .fillMaxSize()
@@ -214,16 +211,6 @@ internal class RealFakeSystemUiBuilderScope(
           .requiredHeight(height)
       ) {
         content()
-      }
-
-      // Hide the navigation bar from the screenshot used for color extraction. A simpler solution
-      // would have involved a `Modifier.drawWithContent()` that skipped the drawing when a screenshot
-      // was in progress, but that is weirdly proving impossible to implement with layoutlib.
-      val view = LocalView.current
-      LaunchedEffect(Unit) {
-        view
-          .findParentById(android.R.id.content)
-          .setTag(LayoutColorExtractor.ExcludedFromColorExtractionTag, Unit)
       }
     }
 
@@ -243,6 +230,25 @@ internal class RealFakeSystemUiBuilderScope(
       }
       onDispose {
         transformer.unregister()
+      }
+    }
+  }
+
+  @Composable
+  override fun Overlay(
+    content: @Composable () -> Unit
+  ) {
+    MatchParentWidthPopup {
+      content()
+
+      // Hide the overlay from the screenshot used for color extraction. A simpler solution would
+      // have involved a `Modifier.drawWithContent()` that skipped the drawing when a screenshot
+      // was in progress, but that is weirdly proving impossible to implement with layoutlib.
+      val view = LocalView.current
+      LaunchedEffect(Unit) {
+        view
+          .findParentById(android.R.id.content)
+          .setTag(LayoutColorExtractor.ExcludedFromColorExtractionTag, Unit)
       }
     }
   }
