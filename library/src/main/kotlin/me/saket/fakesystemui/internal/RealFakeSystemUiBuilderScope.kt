@@ -67,6 +67,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import me.saket.fakesystemui.FakeSystemUiBuilderScope
 import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetTransformer
+import me.saket.fakesystemui.FakeWindowProperties
 import me.saket.fakesystemui.ObservableSoftwareKeyboardController
 import kotlin.math.sqrt
 
@@ -75,6 +76,7 @@ internal class RealFakeSystemUiBuilderScope(
   private val boxScope: BoxScope,
   private val colorExtractor: LayoutColorExtractor,
   override val keyboardController: ObservableSoftwareKeyboardController,
+  override val windowFlags: FakeWindowProperties,
 ) : FakeSystemUiBuilderScope, BoxScope by boxScope {
 
   val insetTransformers = MutableStateFlow(emptyList<InsetTransformer>())
@@ -82,10 +84,10 @@ internal class RealFakeSystemUiBuilderScope(
   @Composable
   override fun StatusBar(
     modifier: Modifier,
-    windowLightStatusBar: Boolean,
   ) {
     // todo: could the height be dynamically measured from the layout size?
     val statusBarHeight = 62.dp
+    val contentColor = if (windowFlags.lightStatusBar) Color.Black else Color.White
 
     MatchParentWidthPopup {
       Row(
@@ -98,8 +100,6 @@ internal class RealFakeSystemUiBuilderScope(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
       ) {
-        val contentColor =
-          if (windowLightStatusBar) Color.Black else Color.White
         BasicText(
           text = "9:00",
           color = { contentColor },
@@ -155,7 +155,24 @@ internal class RealFakeSystemUiBuilderScope(
   }
 
   @Composable
-  override fun ThreeButtonNavigationBar(modifier: Modifier, buttonColor: Color, scrimColor: Color) {
+  override fun ThreeButtonNavigationBar(modifier: Modifier) {
+    val buttonColor = if (windowFlags.lightNavigationBar) {
+      Color.Black
+    } else {
+      Color.White
+    }
+    val scrimColor = if (windowFlags.navigationBarContrastEnforced) {
+      if (windowFlags.lightNavigationBar) {
+        //https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/core/java/com/android/internal/policy/DecorView.java;l=141;drc=61197364367c9e404c7da6900658f1b16c42d0da
+        Color.White.copy(alpha = 0.9f)
+      } else {
+        // android.R.color.system_bar_background_semi_transparent
+        Color.Black.copy(alpha = 0.4f)
+      }
+    } else {
+      Color.Transparent
+    }
+
     NavigationBar(modifier, height = 48.dp) {
       Row(
         modifier = Modifier

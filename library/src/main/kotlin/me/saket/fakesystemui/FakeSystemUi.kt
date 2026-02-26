@@ -10,7 +10,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.SoftwareKeyboardController
@@ -54,9 +53,10 @@ import android.view.WindowInsets as ViewWindowInsets
 fun FakeSystemUi(
   navigationBarAppearance: FakeNavigationBarAppearance = ThreeButtonNavigation,
   showKeyboardByDefault: Boolean = false,
+  windowProperties: FakeWindowProperties = FakeWindowProperties(),
   content: @Composable () -> Unit,
 ) {
-  FakeSystemUiBuilder {
+  FakeSystemUiBuilder(windowFlags = windowProperties) {
     StatusBar()
     content()
     if (showKeyboardByDefault || this.keyboardController.showRequests.collectAsState().value) {
@@ -69,11 +69,35 @@ fun FakeSystemUi(
   }
 }
 
+/**
+ * Window flags to control the appearance of fake system bars. These names are terrible,
+ * but they mirror the real Android window flags of the same name.
+ *
+ * @param lightStatusBar When true, status bar content (clock, icons) is drawn dark
+ *   for use on light backgrounds. Maps to [android.R.attr.windowLightStatusBar].
+ * @param lightNavigationBar When true, navigation bar buttons are drawn dark for
+ *   use on light backgrounds. Maps to [android.R.attr.windowLightNavigationBar].
+ * @param navigationBarContrastEnforced When true, a translucent scrim is drawn behind the
+ *   navigation bar to ensure button contrast. Maps to [android.R.attr.enforceNavigationBarContrast].
+ */
+data class FakeWindowProperties(
+  val lightStatusBar: Boolean = true,
+  val lightNavigationBar: Boolean = true,
+  val navigationBarContrastEnforced: Boolean = false,
+)
+
+/** This is an enum so that it can be easily used with any parameterized test runner. */
+enum class FakeNavigationBarAppearance {
+  GestureNavigation,
+  ThreeButtonNavigation,
+}
+
 // todo: doc and usage example.
 @Composable
 @RequiresApi(30)  // TODO: can this be removed?
 fun FakeSystemUiBuilder(
   modifier: Modifier = Modifier,
+  windowFlags: FakeWindowProperties = FakeWindowProperties(),
   content: @Composable FakeSystemUiBuilderScope.() -> Unit,
 ) {
   val hostView = LocalView.current
@@ -86,11 +110,12 @@ fun FakeSystemUiBuilder(
       .then(colorExtractor.recordBitmap())
   ) {
     val boxScope: BoxScope = this
-    val builderScope = remember(boxScope) {
+    val builderScope = remember(boxScope, windowFlags) {
       RealFakeSystemUiBuilderScope(
         boxScope = boxScope,
         colorExtractor = colorExtractor,
         keyboardController = keyboardController,
+        windowFlags = windowFlags,
       )
     }
 
@@ -128,11 +153,12 @@ interface FakeSystemUiBuilderScope : BoxScope {
   // todo: doc.
   val keyboardController: ObservableSoftwareKeyboardController
 
-  // todo: document windowLightStatusBar.
+  // todo: doc
+  val windowFlags: FakeWindowProperties
+
   @Composable
   fun StatusBar(
     modifier: Modifier = Modifier,
-    windowLightStatusBar: Boolean = true,
   )
 
   @Composable
@@ -143,8 +169,6 @@ interface FakeSystemUiBuilderScope : BoxScope {
   @Composable
   fun ThreeButtonNavigationBar(
     modifier: Modifier = Modifier,
-    buttonColor: Color = Color.Black,
-    scrimColor: Color = Color.Transparent,
   )
 
   @Composable
@@ -166,10 +190,4 @@ interface FakeSystemUiBuilderScope : BoxScope {
 
 interface ObservableSoftwareKeyboardController : SoftwareKeyboardController {
   val showRequests: MutableStateFlow<Boolean>
-}
-
-/** This is an enum so that it can be easily used with any parameterized test runner. */
-enum class FakeNavigationBarAppearance {
-  GestureNavigation,
-  ThreeButtonNavigation,
 }

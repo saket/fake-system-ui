@@ -83,6 +83,48 @@ class FakeSystemUiTest(
     }
   }
 
+  @Test fun `light system bar content`() {
+    if (systemTheme != SystemTheme.DarkMode) {
+      throw AssumptionViolatedException("variant not needed")
+    }
+
+    paparazzi.snapshot {
+      val windowFlags = FakeWindowProperties(
+        lightStatusBar = false,
+        lightNavigationBar = false,
+        navigationBarContrastEnforced = true,
+      )
+      FakeSystemUi(windowProperties = windowFlags) {
+        Box(
+          Modifier
+            .fillMaxSize()
+            .background(Color.DarkGray)
+        )
+      }
+    }
+  }
+
+  @Test fun `dark system bar content with contrast enforced`() {
+    if (systemTheme != SystemTheme.LightMode) {
+      throw AssumptionViolatedException("variant not needed")
+    }
+
+    paparazzi.snapshot {
+      val windowFlags = FakeWindowProperties(
+        lightStatusBar = true,
+        lightNavigationBar = true,
+        navigationBarContrastEnforced = true,
+      )
+      FakeSystemUi(windowProperties = windowFlags) {
+        Box(
+          Modifier
+            .fillMaxSize()
+            .background(Color.LightGray)
+        )
+      }
+    }
+  }
+
   @Test fun `show keyboard by default`(
     @TestParameter navigationBarAppearance: FakeNavigationBarAppearance,
   ) {
@@ -149,30 +191,6 @@ class FakeSystemUiTest(
             cursorBrush = SolidColor(Color.Blue),
           )
         }
-      }
-    }
-  }
-
-  @Test fun `tinted system bars`() {
-    if (systemTheme != SystemTheme.DarkMode) {
-      throw AssumptionViolatedException("variant not needed")
-    }
-
-    paparazzi.snapshot {
-      FakeSystemUiBuilder {
-        StatusBar(
-          windowLightStatusBar = false,
-        )
-        ThreeButtonNavigationBar(
-          buttonColor = Color.Yellow,
-          scrimColor = Color.Yellow.copy(alpha = 0.2f),
-        )
-
-        Box(
-          Modifier
-            .fillMaxSize()
-            .background(Color.DarkGray)
-        )
       }
     }
   }
