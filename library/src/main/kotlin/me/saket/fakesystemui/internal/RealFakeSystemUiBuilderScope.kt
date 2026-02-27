@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewParent
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.toRect
 import androidx.compose.ui.graphics.BlendMode
@@ -64,10 +66,10 @@ import androidx.core.view.doOnLayout
 import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.toPath
+import me.saket.fakesystemui.FakeSoftwareKeyboardController
 import me.saket.fakesystemui.FakeSystemUiBuilderScope
 import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetDispatcher
 import me.saket.fakesystemui.FakeWindowProperties
-import me.saket.fakesystemui.FakeSoftwareKeyboardController
 import kotlin.math.sqrt
 import android.view.WindowInsets as AndroidWindowInsets
 
@@ -263,12 +265,18 @@ internal class RealFakeSystemUiBuilderScope(
         .align(Alignment.BottomCenter)
         .fillMaxWidth()
         .height(keyboardHeight)
-        .background(Color.DarkGray) // TODO: light mode colors.
+        .shadow(16.dp)
+        .background(if (isSystemInDarkTheme()) Color(0xFF1D1F20) else Color(0xFFF0F3F8))
         .padding(WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues())
         .dispatchInsetsOnLayout(insetDispatcher)
         .padding(top = 8.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+      val isDark = isSystemInDarkTheme()
+      val textColor = if (isDark) Color.White else Color.Black.copy(alpha = 0.9f)
+      val spaceBarColor = if (isDark) Color.White.copy(alpha = 0.3f) else Color.White
+      val dividerColor = if (isDark) Color.Black.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.05f)
+
       @Suppress("SpellCheckingInspection")
       listOf("QWERTYUIOP", "ASDFLETSF", "UCKINGGO").forEach { letters ->
         Row(
@@ -281,7 +289,7 @@ internal class RealFakeSystemUiBuilderScope(
               text = letter.toString(),
               style = TextStyle.Default.copy(
                 fontSize = 24.sp,
-                color = Color.White
+                color = textColor,
               ),
             )
           }
@@ -290,7 +298,7 @@ internal class RealFakeSystemUiBuilderScope(
           Modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(Color.Black.copy(alpha = 0.2f))
+            .background(dividerColor)
         )
       }
 
@@ -299,7 +307,7 @@ internal class RealFakeSystemUiBuilderScope(
         Modifier
           .padding(vertical = 16.dp)
           .size(width = 160.dp, height = 28.dp)
-          .background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(32.dp))
+          .background(spaceBarColor, RoundedCornerShape(32.dp))
       )
     }
   }
