@@ -51,7 +51,7 @@ private class ShowKeyboardOnFocusModifierNode :
       coroutineScope.launch(Dispatchers.Main.immediate) {
         establishTextInputSession {
           currentValueOf(LocalSoftwareKeyboardController)?.show()
-          startInputMethod { TODO("never called in tests") }
+          startInputMethod { error("never called in tests") }
         }
       }
     }
