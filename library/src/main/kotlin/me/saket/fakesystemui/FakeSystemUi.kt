@@ -6,20 +6,15 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.util.fastFold
-import androidx.core.view.doOnLayout
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.combine
 import me.saket.fakesystemui.FakeNavigationBarAppearance.GestureNavigation
 import me.saket.fakesystemui.FakeNavigationBarAppearance.ThreeButtonNavigation
 import me.saket.fakesystemui.internal.LayoutColorExtractor
@@ -40,7 +35,7 @@ import android.view.WindowInsets as AndroidWindowInsets
  *       Box(
  *        Modifier
  *          .fillMaxSize()
- *          .background(Color(0xFFE6EE9C))
+ *          .background(Color.LightGray)
  *       )
  *     }
  *   }
@@ -74,8 +69,8 @@ fun FakeSystemUi(
 }
 
 /**
- * Window flags to control the appearance of fake system bars. These names are terrible,
- * but they mirror the real Android window flags of the same name.
+ * Window properties/attributes to control the appearance of fake system bars. These
+ * names are terrible, but they mirror the real Android window flags of the same name.
  *
  * @param lightStatusBar When true, status bar content (clock, icons) is drawn dark
  *   for use on light backgrounds. Maps to [android.R.attr.windowLightStatusBar].
@@ -90,7 +85,10 @@ data class FakeWindowProperties(
   val navigationBarContrastEnforced: Boolean = false,
 )
 
-/** This is an enum so that it can be easily used with any parameterized test runner. */
+/**
+ * The navigation bar's appearance, rendered by [FakeSystemUi()][FakeSystemUi].
+ *
+ * This is an enum so that it can be easily used with any parameterized test runner. */
 enum class FakeNavigationBarAppearance {
   GestureNavigation,
   ThreeButtonNavigation,
@@ -114,43 +112,14 @@ fun FakeSystemUiBuilder(
       .then(colorExtractor.recordBitmap())
   ) {
     val boxScope: BoxScope = this
-    val builderScope = remember(boxScope, windowFlags) {
+    val builderScope = remember(boxScope, windowFlags, hostView) {
       RealFakeSystemUiBuilderScope(
         boxScope = boxScope,
         colorExtractor = colorExtractor,
         keyboardController = keyboardController,
         windowFlags = windowFlags,
+        hostView = hostView,
       )
-    }
-
-    // todo: explain why we need this.
-    builderScope.invalidationTick
-
-    LaunchedEffect(builderScope) {
-      combine(
-        builderScope.insetDispatchers,
-        snapshotFlow { builderScope.invalidationTick },
-        ::Pair
-      )
-        .collect { (transformers) ->
-          val insets = transformers.fastFold(AndroidWindowInsets.Builder().build()) { result, transformer ->
-            transformer.buildInsets(result, transformer.overlayBounds)
-          }
-
-          // Apply the insets to the root so that they're propagated to fake overlays as well.
-          // Dispatch immediately to ensure the insets are measured before layout (important
-          // for scrolling).
-          hostView.rootView.dispatchApplyWindowInsets(insets)
-          hostView.rootView.dispatchWindowInsetsAnimationProgress(insets, emptyList())
-
-          // TODO: We shouldn't have to dispatch these insets twice, but different tests
-          //  fail if we omit either the immediate dispatch or the `doOnLayout` dispatch
-          // Dispatch again because some of the overlay tests don't work correctly without it:
-          hostView.rootView.doOnLayout {
-            it.dispatchApplyWindowInsets(insets)
-            it.dispatchWindowInsetsAnimationProgress(insets, emptyList())
-          }
-        }
     }
 
     CompositionLocalProvider(LocalSoftwareKeyboardController provides keyboardController) {
@@ -236,9 +205,6 @@ interface FakeSystemUiBuilderScope : BoxScope {
 
   // todo: doc
   interface InsetDispatcher {
-    val overlayBounds: IntRect
-
-    fun buildInsets(insets: AndroidWindowInsets, boundsInRoot: IntRect): AndroidWindowInsets
     fun dispatchWithBounds(boundsInRoot: IntRect)
     fun unregister()
   }

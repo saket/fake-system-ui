@@ -29,7 +29,6 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,11 +59,11 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.roundToIntRect
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.fastFold
+import androidx.core.view.doOnLayout
 import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.toPath
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 import me.saket.fakesystemui.FakeSystemUiBuilderScope
 import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetDispatcher
 import me.saket.fakesystemui.FakeWindowProperties
@@ -72,17 +71,16 @@ import me.saket.fakesystemui.ObservableSoftwareKeyboardController
 import kotlin.math.sqrt
 import android.view.WindowInsets as AndroidWindowInsets
 
-@Stable
 @RequiresApi(30)
 internal class RealFakeSystemUiBuilderScope(
   private val boxScope: BoxScope,
   private val colorExtractor: LayoutColorExtractor,
   override val keyboardController: ObservableSoftwareKeyboardController,
   override val windowFlags: FakeWindowProperties,
+  private val hostView: View,
 ) : FakeSystemUiBuilderScope, BoxScope by boxScope {
 
-  val insetDispatchers = MutableStateFlow(emptyList<InsetDispatcher>())
-  var invalidationTick by mutableStateOf(0L)
+  private var insetDispatchers = emptyList<RealInsetDispatcher>()
 
   @Composable
   override fun StatusBar(modifier: Modifier) {
@@ -312,32 +310,49 @@ internal class RealFakeSystemUiBuilderScope(
   ): InsetDispatcher {
     val buildInsets by rememberUpdatedState(buildInsets)
     val dispatcher = remember {
-      object : InsetDispatcher {
+      object : RealInsetDispatcher {
         override var overlayBounds: IntRect = IntRect.Zero
-
-        override fun buildInsets(insets: AndroidWindowInsets, boundsInRoot: IntRect): AndroidWindowInsets {
-          return buildInsets(insets, boundsInRoot)
-        }
+        override val buildInsets get() = buildInsets
 
         override fun dispatchWithBounds(boundsInRoot: IntRect) {
           this.overlayBounds = boundsInRoot
-          invalidationTick++
+          dispatchInsets()
         }
 
         override fun unregister() {
-          insetDispatchers.update { existing ->
-            existing - this
-          }
+          insetDispatchers -= this
         }
       }
     }
     DisposableEffect(dispatcher) {
-      insetDispatchers.update { it + dispatcher }
+      insetDispatchers += dispatcher
       onDispose {
-        insetDispatchers.update { it - dispatcher }
+        dispatcher.unregister()
       }
     }
     return dispatcher
+  }
+
+  private fun dispatchInsets() {
+    val insets = insetDispatchers.fastFold(AndroidWindowInsets.Builder().build()) { result, transformer ->
+      transformer.buildInsets(result, transformer.overlayBounds)
+    }
+
+    // Apply the insets to the root so that they're propagated to fake overlays as well.
+    // Dispatch immediately to ensure the insets are measured before layout (important
+    // for scrolling).
+    hostView.rootView.requestLayout()
+    hostView.rootView.doOnLayout {
+      it.dispatchApplyWindowInsets(insets)
+      it.dispatchWindowInsetsAnimationProgress(insets, emptyList())
+    }
+    // TODO: We shouldn't have to dispatch these insets twice, but different tests
+    //  fail if we omit either the immediate dispatch or the `doOnLayout` dispatch
+    // Dispatch again because some of the overlay tests don't work correctly without it:
+    hostView.rootView.post {
+      hostView.rootView.dispatchApplyWindowInsets(insets)
+      hostView.rootView.dispatchWindowInsetsAnimationProgress(insets, emptyList())
+    }
   }
 }
 
@@ -408,4 +423,9 @@ private object BackButtonShape : Shape {
     )
     return Outline.Generic(roundedPolygon.toPath().asComposePath())
   }
+}
+
+private interface RealInsetDispatcher : InsetDispatcher {
+  val overlayBounds: IntRect
+  val buildInsets: (AndroidWindowInsets, boundsInRoot: IntRect) -> AndroidWindowInsets
 }
