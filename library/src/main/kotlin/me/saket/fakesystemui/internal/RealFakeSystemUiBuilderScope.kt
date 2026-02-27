@@ -67,7 +67,7 @@ import androidx.graphics.shapes.toPath
 import me.saket.fakesystemui.FakeSystemUiBuilderScope
 import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetDispatcher
 import me.saket.fakesystemui.FakeWindowProperties
-import me.saket.fakesystemui.ObservableSoftwareKeyboardController
+import me.saket.fakesystemui.FakeSoftwareKeyboardController
 import kotlin.math.sqrt
 import android.view.WindowInsets as AndroidWindowInsets
 
@@ -75,7 +75,7 @@ import android.view.WindowInsets as AndroidWindowInsets
 internal class RealFakeSystemUiBuilderScope(
   private val boxScope: BoxScope,
   private val colorExtractor: LayoutColorExtractor,
-  override val keyboardController: ObservableSoftwareKeyboardController,
+  override val keyboardController: FakeSoftwareKeyboardController,
   override val windowFlags: FakeWindowProperties,
   private val hostView: View,
 ) : FakeSystemUiBuilderScope, BoxScope by boxScope {

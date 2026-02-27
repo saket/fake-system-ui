@@ -19,7 +19,7 @@ import me.saket.fakesystemui.FakeNavigationBarAppearance.GestureNavigation
 import me.saket.fakesystemui.FakeNavigationBarAppearance.ThreeButtonNavigation
 import me.saket.fakesystemui.internal.LayoutColorExtractor
 import me.saket.fakesystemui.internal.RealFakeSystemUiBuilderScope
-import me.saket.fakesystemui.internal.RealObservableSoftwareKeyboardController
+import me.saket.fakesystemui.internal.RealFakeSoftwareKeyboardController
 import me.saket.fakesystemui.internal.showKeyboardOnFocus
 import android.view.WindowInsets as AndroidWindowInsets
 
@@ -94,7 +94,12 @@ enum class FakeNavigationBarAppearance {
   ThreeButtonNavigation,
 }
 
-// todo: doc and usage example.
+/**
+ * Lower-level alternative to [FakeSystemUi] that gives full control over which system
+ * bars and overlays are rendered. Use this when your device has a custom system UI that
+ * differs from stock Android: custom-shaped status bars, display cutouts, or proprietary
+ * navigation controls.
+ */
 @Composable
 @RequiresApi(30)  // TODO: can this be removed?
 fun FakeSystemUiBuilder(
@@ -104,7 +109,7 @@ fun FakeSystemUiBuilder(
 ) {
   val hostView = LocalView.current
   val colorExtractor = remember { LayoutColorExtractor() }
-  val keyboardController = remember { RealObservableSoftwareKeyboardController() }
+  val keyboardController = remember { RealFakeSoftwareKeyboardController() }
 
   Box(
     modifier
@@ -131,10 +136,10 @@ fun FakeSystemUiBuilder(
 }
 
 interface FakeSystemUiBuilderScope : BoxScope {
-  // todo: doc.
-  val keyboardController: ObservableSoftwareKeyboardController
+  /** Keyboard controller that can be observed to check whether a soft keyboard show was requested. */
+  val keyboardController: FakeSoftwareKeyboardController
 
-  // todo: doc
+  /** Window properties used for controlling the appearance of fake system bars. */
   val windowFlags: FakeWindowProperties
 
   @Composable
@@ -157,14 +162,31 @@ interface FakeSystemUiBuilderScope : BoxScope {
     modifier: Modifier = Modifier,
   )
 
-  // todo:
-  //  - doc.
   /**
+   * Renders [content] as a full-size overlay on top of the current layout. Works
+   * reliably with Paparazzi (unlike Compose's `Popup()`). Overlays are excluded
+   * from color extraction so they don't interfere with navigation bar tinting.
+   *
+   * See [rememberInsetDispatcher] for dispatching insets from overlays.
+   */
+  @Composable
+  fun InsetOverlay(
+    content: @Composable () -> Unit,
+  )
+
+  /**
+   * Creates an [InsetDispatcher] that participates in window inset calculation. When
+   * the dispatcher's layout bounds change (via [dispatchInsetsOnLayout]), [buildInsets]
+   * is called with the current accumulated insets and the overlay's bounds, and should
+   * return updated insets that include this overlay's contribution.
+   *
+   * Typically used together with [InsetOverlay] and [dispatchInsetsOnLayout]:
+   *
    * ```kotlin
    * @Composable
-   * fun FakeSystemUiBuilderScope.FooInsets() {
+   * fun FakeSystemUiBuilderScope.FooBar() {
    *   val insetDispatcher = rememberInsetDispatcher { insets, boundsInRoot ->
-   *     val fooInsets = Insets.of(
+   *   val fooInsets = Insets.of(
    *       /* left = */ 0,
    *       /* top = */ boundsInRoot.height,
    *       /* right = */ 0,
@@ -188,11 +210,6 @@ interface FakeSystemUiBuilderScope : BoxScope {
    * ```
    */
   @Composable
-  fun InsetOverlay(
-    content: @Composable () -> Unit,
-  )
-
-  @Composable
   fun rememberInsetDispatcher(
     buildInsets: (AndroidWindowInsets, boundsInRoot: IntRect) -> AndroidWindowInsets
   ): InsetDispatcher
@@ -203,13 +220,13 @@ interface FakeSystemUiBuilderScope : BoxScope {
     }
   }
 
-  // todo: doc
+  /** See [rememberInsetDispatcher]. */
   interface InsetDispatcher {
     fun dispatchWithBounds(boundsInRoot: IntRect)
     fun unregister()
   }
 }
 
-interface ObservableSoftwareKeyboardController : SoftwareKeyboardController {
+interface FakeSoftwareKeyboardController : SoftwareKeyboardController {
   val showRequests: MutableStateFlow<Boolean>
 }

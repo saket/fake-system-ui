@@ -13,9 +13,9 @@ import androidx.compose.ui.platform.establishTextInputSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import me.saket.fakesystemui.ObservableSoftwareKeyboardController
+import me.saket.fakesystemui.FakeSoftwareKeyboardController
 
-internal class RealObservableSoftwareKeyboardController : ObservableSoftwareKeyboardController {
+internal class RealFakeSoftwareKeyboardController : FakeSoftwareKeyboardController {
   override val showRequests = MutableStateFlow(false)
 
   override fun hide() {

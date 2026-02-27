@@ -14,11 +14,12 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.findViewTreeSavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
-// todo: doc?
-// Used because
-// (a) Popup() doesn't seem to work with paparazzi
-// (b) Dialog() has inflexible styling
-// (c) Modifier.fillMaxWidth() doesn't work in popups
+/**
+ * A custom popup implementation that matches the host view's size. Used instead of
+ * Compose's `Popup()` because it doesn't work reliably with Layoutlib (especially
+ * `Modifier.fillMaxWidth()` at the time of writing). `Dialog()` isn't usable either
+ * due to its inflexible styling.
+ */
 @Composable
 internal fun MatchParentWidthPopup(
   content: @Composable () -> Unit,
