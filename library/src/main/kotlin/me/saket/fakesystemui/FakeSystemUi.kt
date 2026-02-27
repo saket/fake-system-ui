@@ -1,6 +1,6 @@
 package me.saket.fakesystemui
 
-import androidx.annotation.RequiresApi
+import android.os.Build.VERSION.SDK_INT
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,8 +18,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import me.saket.fakesystemui.FakeNavigationBarAppearance.GestureNavigation
 import me.saket.fakesystemui.FakeNavigationBarAppearance.ThreeButtonNavigation
 import me.saket.fakesystemui.internal.LayoutColorExtractor
-import me.saket.fakesystemui.internal.RealFakeSystemUiBuilderScope
+import me.saket.fakesystemui.internal.NoOpFakeSystemUiBuilderScope
 import me.saket.fakesystemui.internal.RealFakeSoftwareKeyboardController
+import me.saket.fakesystemui.internal.RealFakeSystemUiBuilderScope
 import me.saket.fakesystemui.internal.showKeyboardOnFocus
 import android.view.WindowInsets as AndroidWindowInsets
 
@@ -48,7 +49,6 @@ import android.view.WindowInsets as AndroidWindowInsets
  *   looks good with gesture navigation.
  */
 @Composable
-@RequiresApi(30)  // TODO: can this be removed?
 fun FakeSystemUi(
   navigationBarAppearance: FakeNavigationBarAppearance = ThreeButtonNavigation,
   showKeyboardByDefault: Boolean = false,
@@ -101,12 +101,18 @@ enum class FakeNavigationBarAppearance {
  * navigation controls.
  */
 @Composable
-@RequiresApi(30)  // TODO: can this be removed?
 fun FakeSystemUiBuilder(
   modifier: Modifier = Modifier,
   windowFlags: FakeWindowProperties = FakeWindowProperties(),
   content: @Composable FakeSystemUiBuilderScope.() -> Unit,
 ) {
+  if (SDK_INT < 30) {
+    Box(modifier.fillMaxSize()) {
+      content(NoOpFakeSystemUiBuilderScope(this))
+    }
+    return
+  }
+
   val hostView = LocalView.current
   val colorExtractor = remember { LayoutColorExtractor() }
   val keyboardController = remember { RealFakeSoftwareKeyboardController() }

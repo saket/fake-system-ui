@@ -35,7 +35,6 @@ internal fun Modifier.showKeyboardOnFocus(): Modifier {
 private data object ShowKeyboardOnFocusModifierElement :
   ModifierNodeElement<ShowKeyboardOnFocusModifierNode>() {
   override fun create() = ShowKeyboardOnFocusModifierNode()
-
   override fun update(node: ShowKeyboardOnFocusModifierNode) = Unit
 }
 
