@@ -9,7 +9,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.SoftwareKeyboardController
@@ -24,7 +26,7 @@ import me.saket.fakesystemui.internal.LayoutColorExtractor
 import me.saket.fakesystemui.internal.RealFakeSystemUiBuilderScope
 import me.saket.fakesystemui.internal.RealObservableSoftwareKeyboardController
 import me.saket.fakesystemui.internal.showKeyboardOnFocus
-import android.view.WindowInsets as ViewWindowInsets
+import android.view.WindowInsets as AndroidWindowInsets
 
 /**
  * Mimics Android's system UI by rendering fake status and navigation bars. The sizes of the system
@@ -121,30 +123,34 @@ fun FakeSystemUiBuilder(
       )
     }
 
+    // todo: explain why we need this.
+    builderScope.invalidationTick
+
     LaunchedEffect(builderScope) {
       combine(
         builderScope.insetDispatchers,
-        builderScope.insetInvalidations,
-        ::Pair,
-      ).collect { (transformers) ->
-        val insets = transformers.fastFold(ViewWindowInsets.Builder().build()) { result, transformer ->
-          transformer.dispatch(result)
-        }
+        snapshotFlow { builderScope.invalidationTick },
+        ::Pair
+      )
+        .collect { (transformers) ->
+          val insets = transformers.fastFold(AndroidWindowInsets.Builder().build()) { result, transformer ->
+            transformer.buildInsets(result, transformer.overlayBounds)
+          }
 
-        // Apply the insets to the root so that they're propagated to fake overlays as well.
-        // Dispatch immediately to ensure the insets are measured before layout (important
-        // for scrolling).
-        hostView.rootView.dispatchApplyWindowInsets(insets)
-        hostView.rootView.dispatchWindowInsetsAnimationProgress(insets, emptyList())
+          // Apply the insets to the root so that they're propagated to fake overlays as well.
+          // Dispatch immediately to ensure the insets are measured before layout (important
+          // for scrolling).
+          hostView.rootView.dispatchApplyWindowInsets(insets)
+          hostView.rootView.dispatchWindowInsetsAnimationProgress(insets, emptyList())
 
-        // TODO: We shouldn't have to dispatch these insets twice, but different tests
-        //  fail if we omit either the immediate dispatch or the `doOnLayout` dispatch
-        // Dispatch again because some of the overlay tests don't work correctly without it:
-        hostView.rootView.doOnLayout {
-          it.dispatchApplyWindowInsets(insets)
-          it.dispatchWindowInsetsAnimationProgress(insets, emptyList())
+          // TODO: We shouldn't have to dispatch these insets twice, but different tests
+          //  fail if we omit either the immediate dispatch or the `doOnLayout` dispatch
+          // Dispatch again because some of the overlay tests don't work correctly without it:
+          hostView.rootView.doOnLayout {
+            it.dispatchApplyWindowInsets(insets)
+            it.dispatchWindowInsetsAnimationProgress(insets, emptyList())
+          }
         }
-      }
     }
 
     CompositionLocalProvider(LocalSoftwareKeyboardController provides keyboardController) {
@@ -184,60 +190,56 @@ interface FakeSystemUiBuilderScope : BoxScope {
 
   // todo:
   //  - doc.
-  //  - usage isn't great. why does someone need to both render and handwrite the inset size?
   /**
    * ```kotlin
    * @Composable
-   * fun FakeSystemUiBuilderScope.Foo() {
-   *   // Display the system UI overlay.
-   *   Overlay {
+   * fun FakeSystemUiBuilderScope.FooInsets() {
+   *   val insetDispatcher = rememberInsetDispatcher { insets, boundsInRoot ->
+   *     val fooInsets = Insets.of(
+   *       /* left = */ 0,
+   *       /* top = */ boundsInRoot.height,
+   *       /* right = */ 0,
+   *       /* bottom = */ 0
+   *     )
+   *     WindowInsets.Builder(insets)
+   *       .setInsets(WindowInsets.Type…, fooInsets)
+   *       .build()
+   *   }
+   *
+   *   InsetOverlay {
    *     Box(
    *       Modifier
    *         .fillMaxWidth()
    *         .height(42.dp)
+   *         .dispatchInsetsOnLayout(insetDispatcher)
    *         .background(Color.Red)
    *     )
-   *   }
-   *
-   *   // Dispatch its insets.
-   *   DisposableEffect(density) {
-   *     val transformer = registerInsetTransformer { insets ->
-   *       val statusBarInsets = Insets.of(
-   *         /* left = */ 0,
-   *         /* top = */ 42,
-   *         /* right = */ 0,
-   *         /* bottom = */ 0
-   *       )
-   *       WindowInsets.Builder(insets)
-   *         .setInsets(WindowInsets.Type…, statusBarInsets)
-   *         .setInsetsIgnoringVisibility(WindowInsets.Type…, statusBarInsets)
-   *         .build()
-   *     }
-   *     onDispose {
-   *       transformer.unregister()
-   *     }
    *   }
    * }
    * ```
    */
   @Composable
-  fun Overlay(
+  fun InsetOverlay(
     content: @Composable () -> Unit,
   )
 
   @Composable
   fun rememberInsetDispatcher(
-    dispatch: (ViewWindowInsets, IntRect) -> ViewWindowInsets
+    buildInsets: (AndroidWindowInsets, boundsInRoot: IntRect) -> AndroidWindowInsets
   ): InsetDispatcher
 
-  // todo: doc
-  fun registerInsetDispatcher(
-    dispatch: (ViewWindowInsets) -> ViewWindowInsets
-  ): InsetDispatcher
+  fun Modifier.dispatchInsetsOnLayout(dispatcher: InsetDispatcher): Modifier {
+    return this.onLayoutRectChanged(debounceMillis = 0) {
+      dispatcher.dispatchWithBounds(it.boundsInRoot)
+    }
+  }
 
   // todo: doc
   interface InsetDispatcher {
-    fun dispatch(insets: ViewWindowInsets): ViewWindowInsets
+    val overlayBounds: IntRect
+
+    fun buildInsets(insets: AndroidWindowInsets, boundsInRoot: IntRect): AndroidWindowInsets
+    fun dispatchWithBounds(boundsInRoot: IntRect)
     fun unregister()
   }
 }

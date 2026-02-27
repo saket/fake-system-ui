@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.graphics.Insets
 import android.view.View
 import android.view.ViewParent
-import android.view.WindowInsets
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -14,13 +13,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
@@ -29,9 +29,11 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,12 +51,10 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -70,7 +70,9 @@ import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetDispatcher
 import me.saket.fakesystemui.FakeWindowProperties
 import me.saket.fakesystemui.ObservableSoftwareKeyboardController
 import kotlin.math.sqrt
+import android.view.WindowInsets as AndroidWindowInsets
 
+@Stable
 @RequiresApi(30)
 internal class RealFakeSystemUiBuilderScope(
   private val boxScope: BoxScope,
@@ -79,20 +81,33 @@ internal class RealFakeSystemUiBuilderScope(
   override val windowFlags: FakeWindowProperties,
 ) : FakeSystemUiBuilderScope, BoxScope by boxScope {
 
-  val insetTransformers = MutableStateFlow(emptyList<InsetTransformer>())
+  val insetDispatchers = MutableStateFlow(emptyList<InsetDispatcher>())
+  var invalidationTick by mutableStateOf(0L)
 
   @Composable
   override fun StatusBar(modifier: Modifier) {
-    // todo: could the height be dynamically measured from the layout size?
-    val statusBarHeight = 62.dp
     val contentColor = if (windowFlags.lightStatusBar) Color.Black else Color.White
 
-    Overlay {
+    val insetDispatcher = rememberInsetDispatcher { insets, bounds ->
+      val statusBarInsets = Insets.of(
+        /* left = */ 0,
+        /* top = */ bounds.height,
+        /* right = */ 0,
+        /* bottom = */ 0
+      )
+      AndroidWindowInsets.Builder(insets)
+        .setInsets(AndroidWindowInsets.Type.statusBars(), statusBarInsets)
+        .setInsetsIgnoringVisibility(AndroidWindowInsets.Type.statusBars(), statusBarInsets)
+        .build()
+    }
+
+    InsetOverlay {
       Row(
         modifier = modifier
           .fillMaxWidth()
-          .height(statusBarHeight)
+          .height(62.dp)
           .padding(horizontal = 16.dp)
+          .dispatchInsetsOnLayout(insetDispatcher)
           .clearAndSetSemantics {},
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -116,36 +131,17 @@ internal class RealFakeSystemUiBuilderScope(
         )
       }
     }
-
-    val density = LocalDensity.current
-    DisposableEffect(density) {
-      val transformer = registerInsetDispatcher { insets ->
-        val statusBarInsets = Insets.of(
-          /* left = */ 0,
-          /* top = */ with(density) { statusBarHeight.roundToPx() },
-          /* right = */ 0,
-          /* bottom = */ 0
-        )
-        WindowInsets.Builder(insets)
-          .setInsets(WindowInsets.Type.statusBars(), statusBarInsets)
-          .setInsetsIgnoringVisibility(WindowInsets.Type.statusBars(), statusBarInsets)
-          .build()
-      }
-      onDispose {
-        transformer.unregister()
-      }
-    }
   }
 
   @Composable
   override fun GestureNavigationBar(modifier: Modifier) {
-    // todo: does the height need to be hardcoded? can it be measured instead?
-    NavigationBar(height = 24.dp, modifier) {
+    NavigationBar(modifier) {
       Box(
         Modifier
           .align(Alignment.Center)
+          .height(24.dp)
           .tintBasedOnUnderneathContent(colorExtractor)
-          .size(width = 100.dp, height = 4.dp)
+          .requiredSize(width = 100.dp, height = 4.dp)
           .background(Color.Black, RoundedCornerShape(4.dp))
       )
     }
@@ -170,10 +166,11 @@ internal class RealFakeSystemUiBuilderScope(
       Color.Transparent
     }
 
-    NavigationBar(height = 48.dp, modifier) {
+    NavigationBar(modifier) {
       Row(
         modifier = Modifier
-          .fillMaxSize()
+          .fillMaxWidth()
+          .height(48.dp)
           .background(scrimColor),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
@@ -199,43 +196,36 @@ internal class RealFakeSystemUiBuilderScope(
 
   @Composable
   private fun NavigationBar(
-    height: Dp,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
   ) {
-    Overlay {
+    val insetDispatcher = rememberInsetDispatcher { insets, bounds ->
+      val navigationBarInsets = Insets.of(
+        /* left = */ 0,
+        /* top = */ 0,
+        /* right = */ 0,
+        /* bottom = */ bounds.height,
+      )
+      AndroidWindowInsets.Builder(insets)
+        .setInsets(AndroidWindowInsets.Type.navigationBars(), navigationBarInsets)
+        .setInsetsIgnoringVisibility(AndroidWindowInsets.Type.navigationBars(), navigationBarInsets)
+        .build()
+    }
+
+    InsetOverlay {
       Box(
         modifier
           .fillMaxSize()
           .wrapContentHeight(align = Alignment.Bottom)
-          .requiredHeight(height)
+          .dispatchInsetsOnLayout(insetDispatcher)
       ) {
         content()
-      }
-    }
-
-    val density = LocalDensity.current
-    DisposableEffect(density) {
-      val transformer = registerInsetDispatcher { insets ->
-        val navigationBarInsets = Insets.of(
-          /* left = */ 0,
-          /* top = */ 0,
-          /* right = */ 0,
-          /* bottom = */ with(density) { height.roundToPx() }
-        )
-        WindowInsets.Builder(insets)
-          .setInsets(WindowInsets.Type.navigationBars(), navigationBarInsets)
-          .setInsetsIgnoringVisibility(WindowInsets.Type.navigationBars(), navigationBarInsets)
-          .build()
-      }
-      onDispose {
-        transformer.unregister()
       }
     }
   }
 
   @Composable
-  override fun Overlay(
+  override fun InsetOverlay(
     content: @Composable () -> Unit
   ) {
     MatchParentWidthPopup {
@@ -258,13 +248,26 @@ internal class RealFakeSystemUiBuilderScope(
   override fun SoftKeyboard(modifier: Modifier) {
     val keyboardHeight = 300.dp
 
+    val insetDispatcher = rememberInsetDispatcher { insets, bounds ->
+      val keyboardInsets = Insets.of(
+        /* left = */ 0,
+        /* top = */ 0,
+        /* right = */ 0,
+        /* bottom = */ bounds.height,
+      )
+      AndroidWindowInsets.Builder(insets)
+        .setInsets(AndroidWindowInsets.Type.ime(), keyboardInsets)
+        .build()
+    }
+
     Column(
       modifier = modifier
         .align(Alignment.BottomCenter)
         .fillMaxWidth()
         .height(keyboardHeight)
         .background(Color.DarkGray) // TODO: light mode colors.
-        .padding(androidx.compose.foundation.layout.WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues())
+        .padding(WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues())
+        .dispatchInsetsOnLayout(insetDispatcher)
         .padding(top = 8.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -301,43 +304,40 @@ internal class RealFakeSystemUiBuilderScope(
           .background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(32.dp))
       )
     }
-
-    val density = LocalDensity.current
-    DisposableEffect(density) {
-      val transformer = registerInsetDispatcher { insets ->
-        val keyboardInsets = Insets.of(
-          /* left = */
-          0, /* top = */
-          0, /* right = */
-          0, /* bottom = */
-          with(density) { keyboardHeight.roundToPx() },
-        )
-        WindowInsets.Builder(insets)
-          .setInsets(WindowInsets.Type.ime(), keyboardInsets)
-          .build()
-      }
-      onDispose {
-        transformer.unregister()
-      }
-    }
   }
 
-  override fun registerInsetDispatcher(dispatch: (WindowInsets) -> WindowInsets): InsetDispatcher {
-    val transformer = object : InsetDispatcher {
-      override fun dispatch(insets: WindowInsets): WindowInsets {
-        return dispatch(insets)
-      }
+  @Composable
+  override fun rememberInsetDispatcher(
+    buildInsets: (AndroidWindowInsets, boundsInRoot: IntRect) -> AndroidWindowInsets
+  ): InsetDispatcher {
+    val buildInsets by rememberUpdatedState(buildInsets)
+    val dispatcher = remember {
+      object : InsetDispatcher {
+        override var overlayBounds: IntRect = IntRect.Zero
 
-      override fun unregister() {
-        insetDispatchers.update { existing ->
-          existing - this
+        override fun buildInsets(insets: AndroidWindowInsets, boundsInRoot: IntRect): AndroidWindowInsets {
+          return buildInsets(insets, boundsInRoot)
+        }
+
+        override fun dispatchWithBounds(boundsInRoot: IntRect) {
+          this.overlayBounds = boundsInRoot
+          invalidationTick++
+        }
+
+        override fun unregister() {
+          insetDispatchers.update { existing ->
+            existing - this
+          }
         }
       }
     }
-    insetDispatchers.update { existing ->
-      existing + transformer
+    DisposableEffect(dispatcher) {
+      insetDispatchers.update { it + dispatcher }
+      onDispose {
+        insetDispatchers.update { it - dispatcher }
+      }
     }
-    return transformer
+    return dispatcher
   }
 }
 
