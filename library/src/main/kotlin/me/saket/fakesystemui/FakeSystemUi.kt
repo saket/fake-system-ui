@@ -13,9 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.SoftwareKeyboardController
+import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.util.fastFold
 import androidx.core.view.doOnLayout
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import me.saket.fakesystemui.FakeNavigationBarAppearance.GestureNavigation
 import me.saket.fakesystemui.FakeNavigationBarAppearance.ThreeButtonNavigation
 import me.saket.fakesystemui.internal.LayoutColorExtractor
@@ -120,9 +122,13 @@ fun FakeSystemUiBuilder(
     }
 
     LaunchedEffect(builderScope) {
-      builderScope.insetTransformers.collect { transformers ->
-        val insets = transformers.fastFold(initial = ViewWindowInsets.Builder().build()) { result, transformer ->
-          transformer.transform(result)
+      combine(
+        builderScope.insetDispatchers,
+        builderScope.insetInvalidations,
+        ::Pair,
+      ).collect { (transformers) ->
+        val insets = transformers.fastFold(ViewWindowInsets.Builder().build()) { result, transformer ->
+          transformer.dispatch(result)
         }
 
         // Apply the insets to the root so that they're propagated to fake overlays as well.
@@ -219,14 +225,19 @@ interface FakeSystemUiBuilderScope : BoxScope {
     content: @Composable () -> Unit,
   )
 
-  // todo: doc
-  fun registerInsetTransformer(
-    transform: (ViewWindowInsets) -> ViewWindowInsets
-  ): InsetTransformer
+  @Composable
+  fun rememberInsetDispatcher(
+    dispatch: (ViewWindowInsets, IntRect) -> ViewWindowInsets
+  ): InsetDispatcher
 
   // todo: doc
-  interface InsetTransformer {
-    fun transform(insets: ViewWindowInsets): ViewWindowInsets
+  fun registerInsetDispatcher(
+    dispatch: (ViewWindowInsets) -> ViewWindowInsets
+  ): InsetDispatcher
+
+  // todo: doc
+  interface InsetDispatcher {
+    fun dispatch(insets: ViewWindowInsets): ViewWindowInsets
     fun unregister()
   }
 }

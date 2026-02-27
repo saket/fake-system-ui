@@ -66,7 +66,7 @@ import androidx.graphics.shapes.toPath
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import me.saket.fakesystemui.FakeSystemUiBuilderScope
-import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetTransformer
+import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetDispatcher
 import me.saket.fakesystemui.FakeWindowProperties
 import me.saket.fakesystemui.ObservableSoftwareKeyboardController
 import kotlin.math.sqrt
@@ -119,7 +119,7 @@ internal class RealFakeSystemUiBuilderScope(
 
     val density = LocalDensity.current
     DisposableEffect(density) {
-      val transformer = registerInsetTransformer { insets ->
+      val transformer = registerInsetDispatcher { insets ->
         val statusBarInsets = Insets.of(
           /* left = */ 0,
           /* top = */ with(density) { statusBarHeight.roundToPx() },
@@ -140,7 +140,7 @@ internal class RealFakeSystemUiBuilderScope(
   @Composable
   override fun GestureNavigationBar(modifier: Modifier) {
     // todo: does the height need to be hardcoded? can it be measured instead?
-    NavigationBar(modifier, height = 24.dp) {
+    NavigationBar(height = 24.dp, modifier) {
       Box(
         Modifier
           .align(Alignment.Center)
@@ -170,7 +170,7 @@ internal class RealFakeSystemUiBuilderScope(
       Color.Transparent
     }
 
-    NavigationBar(modifier, height = 48.dp) {
+    NavigationBar(height = 48.dp, modifier) {
       Row(
         modifier = Modifier
           .fillMaxSize()
@@ -199,8 +199,8 @@ internal class RealFakeSystemUiBuilderScope(
 
   @Composable
   private fun NavigationBar(
-    modifier: Modifier,
     height: Dp,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
   ) {
     Overlay {
@@ -216,7 +216,7 @@ internal class RealFakeSystemUiBuilderScope(
 
     val density = LocalDensity.current
     DisposableEffect(density) {
-      val transformer = registerInsetTransformer { insets ->
+      val transformer = registerInsetDispatcher { insets ->
         val navigationBarInsets = Insets.of(
           /* left = */ 0,
           /* top = */ 0,
@@ -304,7 +304,7 @@ internal class RealFakeSystemUiBuilderScope(
 
     val density = LocalDensity.current
     DisposableEffect(density) {
-      val transformer = registerInsetTransformer { insets ->
+      val transformer = registerInsetDispatcher { insets ->
         val keyboardInsets = Insets.of(
           /* left = */
           0, /* top = */
@@ -322,19 +322,19 @@ internal class RealFakeSystemUiBuilderScope(
     }
   }
 
-  override fun registerInsetTransformer(transform: (WindowInsets) -> WindowInsets): InsetTransformer {
-    val transformer = object : InsetTransformer {
-      override fun transform(insets: WindowInsets): WindowInsets {
-        return transform(insets)
+  override fun registerInsetDispatcher(dispatch: (WindowInsets) -> WindowInsets): InsetDispatcher {
+    val transformer = object : InsetDispatcher {
+      override fun dispatch(insets: WindowInsets): WindowInsets {
+        return dispatch(insets)
       }
 
       override fun unregister() {
-        insetTransformers.update { existing ->
+        insetDispatchers.update { existing ->
           existing - this
         }
       }
     }
-    insetTransformers.update { existing ->
+    insetDispatchers.update { existing ->
       existing + transformer
     }
     return transformer
@@ -409,4 +409,3 @@ private object BackButtonShape : Shape {
     return Outline.Generic(roundedPolygon.toPath().asComposePath())
   }
 }
-
