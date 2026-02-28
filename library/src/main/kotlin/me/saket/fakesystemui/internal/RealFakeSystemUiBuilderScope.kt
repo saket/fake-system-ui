@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.toRect
@@ -46,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -72,6 +74,7 @@ import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetDispatcher
 import me.saket.fakesystemui.FakeWindowProperties
 import kotlin.math.sqrt
 import android.view.WindowInsets as AndroidWindowInsets
+import androidx.compose.ui.graphics.shadow.Shadow
 
 @RequiresApi(30)
 internal class RealFakeSystemUiBuilderScope(
@@ -264,6 +267,7 @@ internal class RealFakeSystemUiBuilderScope(
         .fillMaxWidth()
         .height(300.dp)
         .shadow(16.dp)
+        .dropShadow(RectangleShape, Shadow(16.dp))
         .background(if (isSystemInDarkTheme()) Color(0xFF1D1F20) else Color(0xFFF0F3F8))
         .padding(WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues())
         .dispatchInsetsOnLayout(insetDispatcher)
@@ -301,11 +305,13 @@ internal class RealFakeSystemUiBuilderScope(
       }
 
       // Space-bar.
+      val spaceBarShape = RoundedCornerShape(32.dp)
       Box(
         Modifier
           .padding(vertical = 16.dp)
           .size(width = 160.dp, height = 28.dp)
-          .background(spaceBarColor, RoundedCornerShape(32.dp))
+          .dropShadow(spaceBarShape, Shadow(2.dp, alpha = 0.05f))
+          .background(spaceBarColor, spaceBarShape)
       )
     }
   }
