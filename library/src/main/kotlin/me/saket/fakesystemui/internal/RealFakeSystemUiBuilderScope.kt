@@ -246,8 +246,6 @@ internal class RealFakeSystemUiBuilderScope(
   @Composable
   @OptIn(ExperimentalLayoutApi::class)
   override fun SoftKeyboard(modifier: Modifier) {
-    val keyboardHeight = 300.dp
-
     val insetDispatcher = rememberInsetDispatcher { insets, bounds ->
       val keyboardInsets = Insets.of(
         /* left = */ 0,
@@ -264,7 +262,7 @@ internal class RealFakeSystemUiBuilderScope(
       modifier = modifier
         .align(Alignment.BottomCenter)
         .fillMaxWidth()
-        .height(keyboardHeight)
+        .height(300.dp)
         .shadow(16.dp)
         .background(if (isSystemInDarkTheme()) Color(0xFF1D1F20) else Color(0xFFF0F3F8))
         .padding(WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues())
