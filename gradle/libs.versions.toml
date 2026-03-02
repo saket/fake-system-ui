@@ -12,12 +12,10 @@ androidx-ktx = "1.16.0" # https://developer.android.com/kotlin/ktx#core
 androidx-activity = "1.10.1"  # https://developer.android.com/jetpack/androidx/releases/activity
 androidx-shapes = "1.1.0"  # https://developer.android.com/jetpack/androidx/releases/graphics
 paparazzi = "2.0.0-alpha01" # https://github.com/cashapp/paparazzi/releases
-telephoto = "0.18.0" # https://github.com/saket/telephoto/releases
 dokka = "2.0.0" # https://github.com/kotlin/dokka/releases
 junit = "4.13.2"
 testParameterInjector = "1.21" # https://github.com/google/TestParameterInjector/releases
 composeLintChecks = "1.4.2" # https://github.com/slackhq/compose-lints/releases
-androidx-test-core = "1.6.1"
 mavenPublish = "0.35.0" # https://vanniktech.github.io/gradle-maven-publish-plugin/changelog/
 
 [plugins]
@@ -42,9 +40,7 @@ androidx-lifecycle = { module = "androidx.lifecycle:lifecycle-runtime-ktx", vers
 androidx-savedstate = { module = "androidx.savedstate:savedstate-ktx", version.ref = "androidx-savedstate" }
 composeLintChecks = { module = "com.slack.lint.compose:compose-lint-checks", version.ref = "composeLintChecks" }
 paparazzi = { module = "app.cash.paparazzi:paparazzi", version.ref = "paparazzi" }
-telephoto = { module = "me.saket.telephoto:zoomable", version.ref = "telephoto" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
 testParameterInjector = { module = "com.google.testparameterinjector:test-parameter-injector", version.ref = "testParameterInjector" }
 androidx-compose-ui-test-junit = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "androidx-compose-ui" }
-androidx-test-core = { module = "androidx.test:core-ktx", version.ref = "androidx-test-core" }

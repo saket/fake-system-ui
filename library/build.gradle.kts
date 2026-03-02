@@ -37,7 +37,6 @@ dependencies {
 
   testImplementation(libs.junit)
   testImplementation(libs.testParameterInjector)
-  testImplementation(libs.telephoto)
 }
 
 // Used on CI to prevent publishing of non-snapshot versions.
