@@ -169,9 +169,9 @@ interface FakeSystemUiBuilderScope : BoxScope {
   )
 
   /**
-   * Renders [content] as a full-size overlay on top of the current layout. Works
-   * reliably with Paparazzi (unlike Compose's `Popup()`). Overlays are excluded
-   * from color extraction so they don't interfere with navigation bar tinting.
+   * Renders [content] as a full-size overlay on top of the current layout. Works reliably with
+   * Paparazzi (unlike Compose's `Popup()`). Overlays are excluded from accessibility and color
+   * extraction so they don't interfere with navigation bar tinting.
    *
    * See [rememberInsetDispatcher] for dispatching insets from overlays.
    */

@@ -113,8 +113,7 @@ internal class RealFakeSystemUiBuilderScope(
           .fillMaxWidth()
           .height(62.dp)
           .padding(horizontal = 16.dp)
-          .dispatchInsetsOnLayout(insetDispatcher)
-          .clearAndSetSemantics {},
+          .dispatchInsetsOnLayout(insetDispatcher),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
       ) {
@@ -242,7 +241,9 @@ internal class RealFakeSystemUiBuilderScope(
     content: @Composable () -> Unit
   ) {
     MatchParentWidthPopup {
-      content()
+      Box(Modifier.clearAndSetSemantics {}) {
+        content()
+      }
 
       // Hide the overlay from the screenshot used for color extraction. A simpler solution would
       // have involved a `Modifier.drawWithContent()` that skipped the drawing when a screenshot
@@ -286,7 +287,8 @@ internal class RealFakeSystemUiBuilderScope(
         .dropShadow(RectangleShape, Shadow(16.dp))
         .background(if (isSystemInDarkTheme()) Color(0xFF1D1F20) else Color(0xFFF0F3F8))
         .dispatchInsetsOnLayout(insetDispatcher)
-        .padding(top = 8.dp),
+        .padding(top = 8.dp)
+        .clearAndSetSemantics {},
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       val isDarkTheme = isSystemInDarkTheme()
