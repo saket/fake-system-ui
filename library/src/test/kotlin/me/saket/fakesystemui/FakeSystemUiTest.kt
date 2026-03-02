@@ -32,9 +32,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
-import com.android.resources.NightMode
 import com.google.testing.junit.testparameterinjector.TestParameter
 import com.google.testing.junit.testparameterinjector.TestParameterInjector
 import org.junit.AssumptionViolatedException
@@ -44,19 +42,21 @@ import org.junit.runner.RunWith
 
 @RunWith(TestParameterInjector::class)
 class FakeSystemUiTest(
-  @TestParameter private val systemTheme: SystemTheme
+  @TestParameter private val config: ScreenshotTestConfig,
 ) {
 
   @get:Rule
   val paparazzi = Paparazzi(
-    deviceConfig = DeviceConfig.PIXEL_5.copy(
-      nightMode = systemTheme.nightMode
-    )
+    deviceConfig = config.deviceConfig,
   )
 
   @Test fun `system bars`(
     @TestParameter navigationBarAppearance: FakeNavigationBarAppearance,
   ) {
+    if (config.isLargeFontSize) {
+      throw AssumptionViolatedException("no text rendered in this test")
+    }
+
     paparazzi.snapshot {
       FakeSystemUi(navigationBarAppearance) {
         Box(
@@ -84,8 +84,11 @@ class FakeSystemUiTest(
   }
 
   @Test fun `light system bar content`() {
-    if (systemTheme != SystemTheme.DarkMode) {
+    if (config.isDarkTheme) {
       throw AssumptionViolatedException("variant not needed")
+    }
+    if (config.isLargeFontSize) {
+      throw AssumptionViolatedException("no text rendered in this test")
     }
 
     paparazzi.snapshot {
@@ -105,8 +108,11 @@ class FakeSystemUiTest(
   }
 
   @Test fun `dark system bar content with contrast enforced`() {
-    if (systemTheme != SystemTheme.LightMode) {
+    if (!config.isDarkTheme) {
       throw AssumptionViolatedException("variant not needed")
+    }
+    if (config.isLargeFontSize) {
+      throw AssumptionViolatedException("no text rendered in this test")
     }
 
     paparazzi.snapshot {
@@ -125,7 +131,7 @@ class FakeSystemUiTest(
     }
   }
 
-  @Test fun `show keyboard by default`(
+  @Test fun keyboard(
     @TestParameter navigationBarAppearance: FakeNavigationBarAppearance,
   ) {
     paparazzi.snapshot {
@@ -157,7 +163,7 @@ class FakeSystemUiTest(
   }
 
   @Test fun `show keyboard automatically when a text field is focused`() {
-    if (systemTheme != SystemTheme.LightMode) {
+    if (config.isDarkTheme || config.isLargeFontSize) {
       throw AssumptionViolatedException("variant not needed")
     }
 
@@ -196,7 +202,7 @@ class FakeSystemUiTest(
   }
 
   @Test fun `auto tint navigation bar based on content underneath in real time`() {
-    if (systemTheme != SystemTheme.LightMode) {
+    if (config.isDarkTheme || config.isLargeFontSize) {
       throw AssumptionViolatedException("variant not needed")
     }
 
@@ -226,14 +232,8 @@ class FakeSystemUiTest(
   }
 }
 
-@Suppress("unused")
-enum class SystemTheme(val nightMode: NightMode) {
-  DarkMode(NightMode.NIGHT),
-  LightMode(NightMode.NOTNIGHT),
-}
-
 // todo: upstream this to Paparazzi.
-private fun Paparazzi.gif(
+internal fun Paparazzi.gif(
   start: Long = 0L,
   end: Long = 500L,
   fps: Int = 30,

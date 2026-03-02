@@ -15,13 +15,13 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.requiredWidthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
@@ -52,14 +52,18 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.roundToIntRect
 import androidx.compose.ui.unit.sp
@@ -74,7 +78,6 @@ import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetDispatcher
 import me.saket.fakesystemui.FakeWindowProperties
 import kotlin.math.sqrt
 import android.view.WindowInsets as AndroidWindowInsets
-import androidx.compose.ui.graphics.shadow.Shadow
 
 @RequiresApi(30)
 internal class RealFakeSystemUiBuilderScope(
@@ -144,7 +147,7 @@ internal class RealFakeSystemUiBuilderScope(
           .align(Alignment.Center)
           .height(24.dp)
           .tintBasedOnUnderneathContent(colorExtractor)
-          .requiredSize(width = 100.dp, height = 4.dp)
+          .requiredSize(width = if (isLargeDisplay) 200.dp else 100.dp, height = 4.dp)
           .background(Color.Black, RoundedCornerShape(4.dp))
       )
     }
@@ -170,29 +173,36 @@ internal class RealFakeSystemUiBuilderScope(
     }
 
     NavigationBar(modifier) {
-      Row(
-        modifier = Modifier
+      Box(
+        Modifier
           .fillMaxWidth()
           .height(48.dp)
-          .background(scrimColor),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
+          .background(scrimColor)
       ) {
-        Box(
-          Modifier
-            .size(16.dp)
-            .background(buttonColor, BackButtonShape)
-        )
-        Box(
-          Modifier
-            .size(16.dp)
-            .background(buttonColor, CircleShape)
-        )
-        Box(
-          Modifier
-            .size(16.dp)
-            .background(buttonColor, RoundedCornerShape(size = 4.dp))
-        )
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .align(Alignment.Center)
+            .requiredWidthIn(max = 600.dp),
+          horizontalArrangement = Arrangement.SpaceEvenly,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Box(
+            Modifier
+              .size(16.dp)
+              .background(buttonColor, BackButtonShape)
+          )
+          Box(
+            Modifier
+              .size(16.dp)
+              .background(buttonColor, CircleShape)
+          )
+          Box(
+            Modifier
+              .size(16.dp)
+              .background(buttonColor, RoundedCornerShape(size = 4.dp))
+          )
+        }
       }
     }
   }
@@ -248,6 +258,7 @@ internal class RealFakeSystemUiBuilderScope(
 
   @Composable
   @OptIn(ExperimentalLayoutApi::class)
+  @Suppress("SpellCheckingInspection")
   override fun SoftKeyboard(modifier: Modifier) {
     val insetDispatcher = rememberInsetDispatcher { insets, bounds ->
       val keyboardInsets = Insets.of(
@@ -261,39 +272,70 @@ internal class RealFakeSystemUiBuilderScope(
         .build()
     }
 
+    val rows = if (isLargeDisplay) {
+      listOf("QWERT YUIOP", "ASDFG GHJKL", "ZXCV VBNM")
+    } else {
+      listOf("QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM")
+    }
+
     Column(
       modifier = modifier
         .align(Alignment.BottomCenter)
         .fillMaxWidth()
-        .height(300.dp)
         .shadow(16.dp)
         .dropShadow(RectangleShape, Shadow(16.dp))
         .background(if (isSystemInDarkTheme()) Color(0xFF1D1F20) else Color(0xFFF0F3F8))
-        .padding(WindowInsets.navigationBarsIgnoringVisibility.asPaddingValues())
         .dispatchInsetsOnLayout(insetDispatcher)
         .padding(top = 8.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      val isDark = isSystemInDarkTheme()
-      val textColor = if (isDark) Color.White else Color.Black.copy(alpha = 0.9f)
-      val spaceBarColor = if (isDark) Color.White.copy(alpha = 0.3f) else Color.White
-      val dividerColor = if (isDark) Color.Black.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.05f)
+      val isDarkTheme = isSystemInDarkTheme()
+      val textColor = if (isDarkTheme) Color.White else Color.Black.copy(alpha = 0.9f)
+      val spaceBarColor = if (isDarkTheme) Color.White.copy(alpha = 0.3f) else Color.White
+      val dividerColor = if (isDarkTheme) Color.Black.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.05f)
+      val maxKeyCount = rows.maxOf { row -> row.count { !it.isWhitespace() } }
 
-      @Suppress("SpellCheckingInspection")
-      listOf("QWERTYUIOP", "ASDFLETSF", "UCKINGGO").forEach { letters ->
+      for (row in rows) {
+        val keyCount = row.count { !it.isWhitespace() }
+        val missingKeySlots = (maxKeyCount - keyCount).coerceAtLeast(0)
+        val leadingSpacerWeight = missingKeySlots / 2f
+        val trailingSpacerWeight = missingKeySlots - leadingSpacerWeight
         Row(
-          modifier = Modifier.height(60.dp),
-          horizontalArrangement = Arrangement.spacedBy(24.dp),
+          modifier = Modifier
+            .fillMaxWidth()
+            .height(60.dp)
+            .padding(horizontal = 12.dp),
+          horizontalArrangement = Arrangement.Center,
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          for (letter in letters) {
-            BasicText(
-              text = letter.toString(),
-              style = TextStyle.Default.copy(
-                fontSize = 24.sp,
-                color = textColor,
-              ),
-            )
+          if (leadingSpacerWeight > 0f) {
+            Spacer(Modifier.weight(leadingSpacerWeight))
+          }
+
+          for (letter in row) {
+            if (isLargeDisplay && letter.isWhitespace()) {
+              Spacer(
+                Modifier.weight(2f)
+              )
+            } else {
+              // todo: can these two composables be merged?
+              Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center,
+              ) {
+                BasicText(
+                  text = letter.toString(),
+                  style = TextStyle.Default.copy(
+                    fontSize = 24.sp,
+                    color = textColor,
+                  ),
+                )
+              }
+            }
+          }
+
+          if (trailingSpacerWeight > 0f) {
+            Spacer(Modifier.weight(trailingSpacerWeight))
           }
         }
         Box(
@@ -309,9 +351,19 @@ internal class RealFakeSystemUiBuilderScope(
       Box(
         Modifier
           .padding(vertical = 16.dp)
-          .size(width = 160.dp, height = 28.dp)
+          .fillMaxWidth(fraction = 0.5f)
+          .height(28.dp)
           .dropShadow(spaceBarShape, Shadow(2.dp, alpha = 0.05f))
           .background(spaceBarColor, spaceBarShape)
+      )
+
+      val navBarHeight = with(LocalDensity.current) {
+        WindowInsets.navigationBarsIgnoringVisibility.getBottom(this).toDp()
+      }
+      Spacer(
+        Modifier
+          .fillMaxWidth()
+          .height(navBarHeight.coerceAtLeast(48.dp))
       )
     }
   }
@@ -441,3 +493,6 @@ private interface RealInsetDispatcher : InsetDispatcher {
   val overlayBounds: IntRect
   val buildInsets: (AndroidWindowInsets, boundsInRoot: IntRect) -> AndroidWindowInsets
 }
+
+private val isLargeDisplay: Boolean
+  @Composable get() = LocalWindowInfo.current.containerDpSize.width >= 600.dp
