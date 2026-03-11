@@ -110,32 +110,31 @@ fun FakeSystemUiBuilder(
     Box(modifier.fillMaxSize()) {
       content(NoOpFakeSystemUiBuilderScope(this))
     }
-    return
-  }
+  } else {
+    val hostView = LocalView.current
+    val colorExtractor = remember { LayoutColorExtractor() }
+    val keyboardController = remember { RealFakeSoftwareKeyboardController() }
 
-  val hostView = LocalView.current
-  val colorExtractor = remember { LayoutColorExtractor() }
-  val keyboardController = remember { RealFakeSoftwareKeyboardController() }
+    Box(
+      modifier
+        .fillMaxSize()
+        .then(colorExtractor.recordBitmap())
+    ) {
+      val boxScope: BoxScope = this
+      val builderScope = remember(boxScope, windowFlags, hostView) {
+        RealFakeSystemUiBuilderScope(
+          boxScope = boxScope,
+          colorExtractor = colorExtractor,
+          keyboardController = keyboardController,
+          windowFlags = windowFlags,
+          hostView = hostView,
+        )
+      }
 
-  Box(
-    modifier
-      .fillMaxSize()
-      .then(colorExtractor.recordBitmap())
-  ) {
-    val boxScope: BoxScope = this
-    val builderScope = remember(boxScope, windowFlags, hostView) {
-      RealFakeSystemUiBuilderScope(
-        boxScope = boxScope,
-        colorExtractor = colorExtractor,
-        keyboardController = keyboardController,
-        windowFlags = windowFlags,
-        hostView = hostView,
-      )
-    }
-
-    CompositionLocalProvider(LocalSoftwareKeyboardController provides keyboardController) {
-      Box(Modifier.showKeyboardOnFocus()) {
-        content(builderScope)
+      CompositionLocalProvider(LocalSoftwareKeyboardController provides keyboardController) {
+        Box(Modifier.showKeyboardOnFocus()) {
+          content(builderScope)
+        }
       }
     }
   }
