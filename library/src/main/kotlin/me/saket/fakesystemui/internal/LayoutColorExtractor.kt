@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.WindowManagerImpl
@@ -19,13 +20,16 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.draw
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.roundToIntSize
 import androidx.core.content.getSystemService
 import androidx.core.graphics.get
 import androidx.core.view.children
-import me.saket.fakesystemui.R
+import java.util.Collections
+import java.util.Locale
+import java.util.WeakHashMap
 
 @Stable
 @RequiresApi(29)
@@ -34,6 +38,7 @@ internal class LayoutColorExtractor {
   private var lastBitmap: Bitmap? by mutableStateOf(null)
   private var overlayDrawTrigger by mutableIntStateOf(0)
   private var isScreenshotInProgress = false
+  val viewsExcludedFromColorExtraction: MutableSet<View> = Collections.newSetFromMap(WeakHashMap())
 
   @Suppress("NAME_SHADOWING")
   fun extractColorFromBounds(bounds: (Bitmap) -> IntRect): Color? {
@@ -88,7 +93,7 @@ internal class LayoutColorExtractor {
           // Include any popups that might be visible as well.
           context.findWindowManagerRootView()?.let { overlays ->
             overlays.children
-              .filter { it.getTag(ExcludedFromColorExtractionTag) == null }
+              .filter { it !in viewsExcludedFromColorExtraction }
               .sortedByDescending { it.z }
               .forEach { it.draw(canvas.nativeCanvas) }
           }
@@ -99,10 +104,6 @@ internal class LayoutColorExtractor {
         overlayDrawTrigger++
       }
     }
-  }
-
-  companion object {
-    val ExcludedFromColorExtractionTag = R.id.excluded_from_color_extraction
   }
 }
 

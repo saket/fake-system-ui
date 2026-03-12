@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -249,10 +248,12 @@ internal class RealFakeSystemUiBuilderScope(
       // have involved a `Modifier.drawWithContent()` that skipped the drawing when a screenshot
       // was in progress, but that is weirdly proving impossible to implement with layoutlib.
       val view = LocalView.current
-      LaunchedEffect(Unit) {
-        view
-          .findParentById(android.R.id.content)
-          .setTag(LayoutColorExtractor.ExcludedFromColorExtractionTag, Unit)
+      DisposableEffect(view) {
+        val contentView = view.findParentById(android.R.id.content)
+        colorExtractor.viewsExcludedFromColorExtraction.add(contentView)
+        onDispose {
+          colorExtractor.viewsExcludedFromColorExtraction.remove(contentView)
+        }
       }
     }
   }
