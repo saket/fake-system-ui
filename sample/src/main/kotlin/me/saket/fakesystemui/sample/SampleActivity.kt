@@ -9,12 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import me.saket.fakesystemui.rememberFakeSystemUi
-import kotlinx.coroutines.delay
 
 class SampleActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,16 +28,6 @@ class SampleActivity : AppCompatActivity() {
             .padding(16.dp),
           text = "TODO"
         )
-      }
-
-      val fakeSystemUi = rememberFakeSystemUi()
-      LaunchedEffect(Unit) {
-        while (true) {
-          delay(500)
-          fakeSystemUi.onRoot().performGesture {
-            click(center)
-          }
-        }
       }
     }
   }
