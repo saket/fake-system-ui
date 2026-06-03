@@ -15,7 +15,6 @@ dependencyResolutionManagement {
 }
 
 include(":library")
-include(":sample")
 
 rootProject.name = "fake-system-ui"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
