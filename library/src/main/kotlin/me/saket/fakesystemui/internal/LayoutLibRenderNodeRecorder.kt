@@ -1,5 +1,6 @@
 package me.saket.fakesystemui.internal
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.RenderNode
@@ -7,15 +8,12 @@ import android.media.ImageReader
 import android.view.AttachInfo_Accessor
 import android.view.LayoutlibRenderer
 import android.view.ThreadedRenderer
-import android.view.ViewGroup
-import android.view.WindowManager
-import android.view.WindowManagerImpl
+import android.view.View
 import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.unit.IntSize
-import androidx.core.content.getSystemService
 import androidx.core.graphics.createBitmap
 import java.nio.ByteBuffer
 import android.graphics.Canvas as AndroidCanvas
@@ -33,11 +31,11 @@ internal class LayoutLibRenderNodeRecorder(context: Context, private val size: I
   private val renderNode = RenderNode("recorder")
   private val renderNodeDrawer = RenderNodeDrawer(context, renderNode)
 
-  private val hwRenderer: LayoutlibRenderer = retainWindowManagerRoot(context) {
-    AttachInfo_Accessor.setAttachInfo(renderNodeDrawer).also {
+  private val hwRenderer: LayoutlibRenderer = AttachInfo_Accessor
+    .setAttachInfo(renderNodeDrawer, null)
+    .also {
       it.setup(size.width, size.height, renderNodeDrawer)
     }
-  }
 
   fun record(recorder: (Canvas) -> Unit): Bitmap {
     try {
@@ -48,32 +46,18 @@ internal class LayoutLibRenderNodeRecorder(context: Context, private val size: I
       renderNode.endRecording()
     }
 
-    hwRenderer.draw(renderNodeDrawer)
+    hwRenderer.draw(listOf(renderNodeDrawer))
     return hwRenderer.buffer.toBitmap(size)
   }
 
   /** A dummy ViewGroup for layoutlib, whose renderer requires an independent ViewGroup that can be recorded. */
-  private class RenderNodeDrawer(context: Context, private val node: RenderNode) :
+  @SuppressLint("ViewConstructor")
+  internal class RenderNodeDrawer(context: Context, private val node: RenderNode) :
     FrameLayout(context) {
 
     override fun dispatchDraw(canvas: AndroidCanvas) {
       canvas.drawRenderNode(node)
     }
-  }
-}
-
-private fun <R> retainWindowManagerRoot(context: Context, action: () -> R): R {
-  val wm = context.getSystemService<WindowManager>() as WindowManagerImpl
-  val oldRoot: ViewGroup = WindowManagerImpl::class
-    .java
-    .getDeclaredField("mBaseRootView")
-    .also { it.isAccessible = true }
-    .get(wm) as ViewGroup
-
-  return action().also {
-    // LayoutLib assumes that any View it captures must be the window's root view.
-    // Revert this behavior to prevent LayoutLib from interfering with existing overlays.
-    wm.setBaseRootView(oldRoot)
   }
 }
 

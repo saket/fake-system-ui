@@ -1,13 +1,10 @@
 package me.saket.fakesystemui.internal
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.view.View
-import android.view.ViewGroup
-import android.view.WindowManager
-import android.view.WindowManagerImpl
+import android.view.WindowManagerGlobal
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -20,15 +17,12 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.draw
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.roundToIntSize
-import androidx.core.content.getSystemService
 import androidx.core.graphics.get
-import androidx.core.view.children
 import java.util.Collections
-import java.util.Locale
 import java.util.WeakHashMap
 
 @Stable
@@ -73,6 +67,7 @@ internal class LayoutColorExtractor {
   @SuppressLint("ModifierFactoryExtensionFunction")
   fun recordBitmap(): Modifier {
     val context = LocalContext.current
+    val rootView = LocalView.current.rootView
 
     return Modifier.drawWithCache {
       val recorder = LayoutLibRenderNodeRecorder(context, size.roundToIntSize())
@@ -91,12 +86,12 @@ internal class LayoutColorExtractor {
           }
 
           // Include any popups that might be visible as well.
-          context.findWindowManagerRootView()?.let { overlays ->
-            overlays.children
-              .filter { it !in viewsExcludedFromColorExtraction }
-              .sortedByDescending { it.z }
-              .forEach { it.draw(canvas.nativeCanvas) }
-          }
+          WindowManagerGlobal.getInstance().windowViews
+            .filter { it !== rootView }
+            .filter { it !is LayoutLibRenderNodeRecorder.RenderNodeDrawer }
+            .filter { it !in viewsExcludedFromColorExtraction }
+            .sortedByDescending { it.z }
+            .forEach { it.draw(canvas.nativeCanvas) }
           isScreenshotInProgress = false
         }
 
@@ -105,9 +100,4 @@ internal class LayoutColorExtractor {
       }
     }
   }
-}
-
-private fun Context.findWindowManagerRootView(): ViewGroup? {
-  val windowManager = getSystemService<WindowManager>()
-  return (windowManager as WindowManagerImpl).currentRootView
 }

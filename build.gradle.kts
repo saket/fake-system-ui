@@ -1,7 +1,6 @@
+import com.android.build.api.dsl.LibraryExtension as AndroidLibraryExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
-import com.android.build.gradle.BaseExtension as AndroidBaseExtension
-import com.android.build.gradle.BasePlugin as AndroidBasePlugin
 
 buildscript {
   repositories {
@@ -12,7 +11,6 @@ buildscript {
 
 plugins {
   alias(libs.plugins.android.library) apply false
-  alias(libs.plugins.kotlin.android) apply false
   alias(libs.plugins.compose.compiler) apply false
   alias(libs.plugins.paparazzi) apply false
   alias(libs.plugins.dokka) apply false
@@ -20,8 +18,8 @@ plugins {
 }
 
 allprojects {
-  plugins.withType<AndroidBasePlugin>().configureEach {
-    configure<AndroidBaseExtension> {
+  plugins.withId("com.android.library") {
+    extensions.configure<AndroidLibraryExtension>("android") {
       compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
