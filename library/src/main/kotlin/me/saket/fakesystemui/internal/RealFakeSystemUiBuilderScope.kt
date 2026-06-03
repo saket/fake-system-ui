@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.LayoutDirection
@@ -321,19 +322,15 @@ internal class RealFakeSystemUiBuilderScope(
                 Modifier.weight(2f)
               )
             } else {
-              // todo: can these two composables be merged?
-              Box(
+              BasicText(
                 modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.Center,
-              ) {
-                BasicText(
-                  text = letter.toString(),
-                  style = TextStyle.Default.copy(
-                    fontSize = 24.sp,
-                    color = textColor,
-                  ),
-                )
-              }
+                text = letter.toString(),
+                style = TextStyle.Default.copy(
+                  fontSize = 24.sp,
+                  color = textColor,
+                  textAlign = TextAlign.Center,
+                ),
+              )
             }
           }
 
