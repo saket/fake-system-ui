@@ -53,7 +53,13 @@ internal fun MatchParentWidthPopup(
 
     onDispose {
       popupLayout.disposeComposition()
-      windowManager.removeViewImmediate(popupLayout)
+      try {
+        windowManager.removeViewImmediate(popupLayout)
+      } catch (_: NullPointerException) {
+        // Stupid layoutlib has started throwing an NPE in its newer versions
+        // because it's not expecting ViewGroup#buildOrderedChildList() to return null.
+        (popupLayout.parent as? ViewGroup)?.removeView(popupLayout)
+      }
     }
   }
 }
