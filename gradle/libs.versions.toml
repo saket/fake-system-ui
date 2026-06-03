@@ -1,14 +1,14 @@
 [versions]
 minSdk = "23"
 compileSdk = "35"
-kotlin = "2.2.0" # https://kotlinlang.org/docs/releases.html#release-details
+kotlin = "2.3.21" # https://kotlinlang.org/docs/releases.html#release-details
 agp = "8.13.2"  # https://maven.google.com/web/index.html?q=gradle.plugin#com.android.library:com.android.library.gradle.plugin
 androidx-compose-ui = "1.10.4"   # https://developer.android.com/jetpack/androidx/releases/compose-ui
 androidx-lifecycle = "2.9.1" # https://developer.android.com/jetpack/androidx/releases/lifecycle
 androidx-savedstate = "1.3.0" # https://developer.android.com/jetpack/androidx/releases/savedstate
 androidx-ktx = "1.16.0" # https://developer.android.com/kotlin/ktx#core
 androidx-shapes = "1.1.0"  # https://developer.android.com/jetpack/androidx/releases/graphics
-paparazzi = "2.0.0-alpha02" # https://github.com/cashapp/paparazzi/releases
+paparazzi = "2.0.0-alpha04" # https://github.com/cashapp/paparazzi/releases
 dokka = "2.0.0" # https://github.com/kotlin/dokka/releases
 assertk = "0.28.1" # https://github.com/assertk-org/assertk/releases
 junit = "4.13.2"
