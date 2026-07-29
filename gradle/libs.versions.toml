@@ -1,7 +1,7 @@
 [versions]
 minSdk = "23"
 compileSdk = "35"
-kotlin = "2.1.21" # https://kotlinlang.org/docs/releases.html#release-details
+kotlin = "2.2.0" # https://kotlinlang.org/docs/releases.html#release-details
 agp = "8.13.2"  # https://maven.google.com/web/index.html?q=gradle.plugin#com.android.library:com.android.library.gradle.plugin
 androidx-compose-ui = "1.10.4"   # https://developer.android.com/jetpack/androidx/releases/compose-ui
 androidx-lifecycle = "2.9.1" # https://developer.android.com/jetpack/androidx/releases/lifecycle
@@ -14,7 +14,7 @@ assertk = "0.28.1" # https://github.com/assertk-org/assertk/releases
 junit = "4.13.2"
 testParameterInjector = "1.21" # https://github.com/google/TestParameterInjector/releases
 composeLintChecks = "1.4.2" # https://github.com/slackhq/compose-lints/releases
-mavenPublish = "0.35.0" # https://vanniktech.github.io/gradle-maven-publish-plugin/changelog/
+mavenPublish = "0.37.0" # https://vanniktech.github.io/gradle-maven-publish-plugin/changelog/
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "agp" }
