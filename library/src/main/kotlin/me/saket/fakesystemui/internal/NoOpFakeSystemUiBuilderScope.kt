@@ -28,6 +28,7 @@ internal class NoOpFakeSystemUiBuilderScope(
 
   data object FakeInsetDispatcher : InsetDispatcher {
     override fun dispatchWithBounds(boundsInRoot: IntRect) = Unit
+    override fun redispatchWithLastBounds() = Unit
     override fun unregister() = Unit
   }
 }

@@ -1,5 +1,6 @@
 package me.saket.fakesystemui
 
+import android.view.WindowInsets
 import androidx.compose.animation.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -28,17 +29,22 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import app.cash.paparazzi.Paparazzi
 import com.google.testing.junit.testparameterinjector.TestParameter
 import com.google.testing.junit.testparameterinjector.TestParameterInjector
+import kotlinx.coroutines.delay
 import org.junit.AssumptionViolatedException
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.time.Duration.Companion.milliseconds
 
 @RunWith(TestParameterInjector::class)
 class FakeSystemUiTest(
@@ -227,6 +233,42 @@ class FakeSystemUiTest(
               .background(backgroundColor.value)
           )
         }
+      }
+    }
+  }
+
+  @Test fun `toggle immersive mode`() {
+    if (config != ScreenshotTestConfig.PhoneLight) {
+      throw AssumptionViolatedException("only one device configuration is needed")
+    }
+
+    paparazzi.gif(end = 1_600) {
+      FakeSystemUi(
+        windowProperties = FakeWindowProperties(
+          lightStatusBar = false,
+          lightNavigationBar = false,
+        ),
+      ) {
+        Box(
+          Modifier
+            .fillMaxSize()
+            .background(Color.LightGray)
+        )
+      }
+
+      val view = LocalView.current
+      LaunchedEffect(Unit) {
+        delay(100.milliseconds)
+        view.windowInsetsController!!.hide(WindowInsets.Type.systemBars())
+        delay(350.milliseconds)
+        view.windowInsetsController!!.show(WindowInsets.Type.systemBars())
+        delay(350.milliseconds)
+
+        @Suppress("DEPRECATION")
+        val compatController = ViewCompat.getWindowInsetsController(view)!!
+        compatController.hide(WindowInsetsCompat.Type.systemBars())
+        delay(350.milliseconds)
+        compatController.show(WindowInsetsCompat.Type.systemBars())
       }
     }
   }

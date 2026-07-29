@@ -5,6 +5,10 @@ import android.graphics.Insets
 import android.view.View
 import android.view.ViewParent
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.TweenSpec
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +33,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +56,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.layout.boundsInRoot
@@ -86,6 +93,7 @@ internal class RealFakeSystemUiBuilderScope(
   override val keyboardController: FakeSoftwareKeyboardController,
   override val windowFlags: FakeWindowProperties,
   private val hostView: View,
+  private val insetsControllerObserver: WindowInsetsControllerObserver,
 ) : FakeSystemUiBuilderScope, BoxScope by boxScope {
 
   private var insetDispatchers = emptyList<RealInsetDispatcher>()
@@ -93,6 +101,8 @@ internal class RealFakeSystemUiBuilderScope(
   @Composable
   override fun StatusBar(modifier: Modifier) {
     val contentColor = if (windowFlags.lightStatusBar) Color.Black else Color.White
+    val isVisible = insetsControllerObserver.requestedVisibleTypes.collectAsState().value and
+      AndroidWindowInsets.Type.statusBars() != 0
 
     val insetDispatcher = rememberInsetDispatcher { insets, bounds ->
       val statusBarInsets = Insets.of(
@@ -102,18 +112,32 @@ internal class RealFakeSystemUiBuilderScope(
         /* bottom = */ 0
       )
       AndroidWindowInsets.Builder(insets)
-        .setInsets(AndroidWindowInsets.Type.statusBars(), statusBarInsets)
+        .setInsets(
+          AndroidWindowInsets.Type.statusBars(),
+          if (isVisible) statusBarInsets else Insets.NONE,
+        )
         .setInsetsIgnoringVisibility(AndroidWindowInsets.Type.statusBars(), statusBarInsets)
+        .setVisible(AndroidWindowInsets.Type.statusBars(), isVisible)
         .build()
     }
-
+    LaunchedEffect(isVisible) {
+      insetDispatcher.redispatchWithLastBounds()
+    }
     InsetOverlay {
+      val visibilityFraction = animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = systemBarAnimationSpec(isVisible),
+      )
       Row(
         modifier = modifier
           .fillMaxWidth()
           .height(62.dp)
           .padding(horizontal = 16.dp)
-          .dispatchInsetsOnLayout(insetDispatcher),
+          .dispatchInsetsOnLayout(insetDispatcher)
+          .graphicsLayer {
+            alpha = visibilityFraction.value
+            translationY = -size.height * (1f - visibilityFraction.value)
+          },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
       ) {
@@ -211,6 +235,8 @@ internal class RealFakeSystemUiBuilderScope(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
   ) {
+    val isVisible = insetsControllerObserver.requestedVisibleTypes.collectAsState().value and
+      AndroidWindowInsets.Type.navigationBars() != 0
     val insetDispatcher = rememberInsetDispatcher { insets, bounds ->
       val navigationBarInsets = Insets.of(
         /* left = */ 0,
@@ -219,17 +245,32 @@ internal class RealFakeSystemUiBuilderScope(
         /* bottom = */ bounds.height,
       )
       AndroidWindowInsets.Builder(insets)
-        .setInsets(AndroidWindowInsets.Type.navigationBars(), navigationBarInsets)
+        .setInsets(
+          AndroidWindowInsets.Type.navigationBars(),
+          if (isVisible) navigationBarInsets else Insets.NONE,
+        )
         .setInsetsIgnoringVisibility(AndroidWindowInsets.Type.navigationBars(), navigationBarInsets)
+        .setVisible(AndroidWindowInsets.Type.navigationBars(), isVisible)
         .build()
+    }
+    LaunchedEffect(isVisible) {
+      insetDispatcher.redispatchWithLastBounds()
     }
 
     InsetOverlay {
+      val visibilityFraction by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = systemBarAnimationSpec(isVisible),
+      )
       Box(
         modifier
           .fillMaxSize()
           .wrapContentHeight(align = Alignment.Bottom)
           .dispatchInsetsOnLayout(insetDispatcher)
+          .graphicsLayer {
+            alpha = visibilityFraction
+            translationY = size.height * (1f - visibilityFraction)
+          }
       ) {
         content()
       }
@@ -383,6 +424,10 @@ internal class RealFakeSystemUiBuilderScope(
           dispatchInsets()
         }
 
+        override fun redispatchWithLastBounds() {
+          dispatchWithBounds(overlayBounds)
+        }
+
         override fun unregister() {
           insetDispatchers -= this
         }
@@ -416,6 +461,22 @@ internal class RealFakeSystemUiBuilderScope(
     hostView.rootView.post {
       hostView.rootView.dispatchApplyWindowInsets(insets)
       hostView.rootView.dispatchWindowInsetsAnimationProgress(insets, emptyList())
+    }
+  }
+
+  private companion object {
+    // Matches AOSP's system bar move animation:
+    // https://android.googlesource.com/platform/frameworks/base/+/
+    // 540e22284684/core/java/android/view/InsetsController.java#227
+    fun systemBarAnimationSpec(isVisible: Boolean): TweenSpec<Float> {
+      return tween(
+        durationMillis = if (isVisible) {
+          275
+        } else {
+          340
+        },
+        easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f),
+      )
     }
   }
 }

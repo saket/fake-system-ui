@@ -35,6 +35,7 @@ dependencies {
   implementation(libs.androidx.savedstate)
   implementation(libs.androidx.shapes)
 
+  testImplementation(libs.assertk)
   testImplementation(libs.junit)
   testImplementation(libs.testParameterInjector)
 }

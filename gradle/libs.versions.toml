@@ -10,6 +10,7 @@ androidx-ktx = "1.16.0" # https://developer.android.com/kotlin/ktx#core
 androidx-shapes = "1.1.0"  # https://developer.android.com/jetpack/androidx/releases/graphics
 paparazzi = "2.0.0-alpha02" # https://github.com/cashapp/paparazzi/releases
 dokka = "2.0.0" # https://github.com/kotlin/dokka/releases
+assertk = "0.28.1" # https://github.com/assertk-org/assertk/releases
 junit = "4.13.2"
 testParameterInjector = "1.21" # https://github.com/google/TestParameterInjector/releases
 composeLintChecks = "1.4.2" # https://github.com/slackhq/compose-lints/releases
@@ -33,6 +34,7 @@ androidx-savedstate = { module = "androidx.savedstate:savedstate-ktx", version.r
 composeLintChecks = { module = "com.slack.lint.compose:compose-lint-checks", version.ref = "composeLintChecks" }
 paparazzi = { module = "app.cash.paparazzi:paparazzi", version.ref = "paparazzi" }
 
+assertk = { module = "com.willowtreeapps.assertk:assertk", version.ref = "assertk" }
 junit = { module = "junit:junit", version.ref = "junit" }
 testParameterInjector = { module = "com.google.testparameterinjector:test-parameter-injector", version.ref = "testParameterInjector" }
 androidx-compose-ui-test-junit = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "androidx-compose-ui" }

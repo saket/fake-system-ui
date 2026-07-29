@@ -21,6 +21,7 @@ import me.saket.fakesystemui.internal.LayoutColorExtractor
 import me.saket.fakesystemui.internal.NoOpFakeSystemUiBuilderScope
 import me.saket.fakesystemui.internal.RealFakeSoftwareKeyboardController
 import me.saket.fakesystemui.internal.RealFakeSystemUiBuilderScope
+import me.saket.fakesystemui.internal.WindowInsetsControllerObserver
 import me.saket.fakesystemui.internal.showKeyboardOnFocus
 import android.view.WindowInsets as AndroidWindowInsets
 
@@ -114,6 +115,7 @@ fun FakeSystemUiBuilder(
     val hostView = LocalView.current
     val colorExtractor = remember { LayoutColorExtractor() }
     val keyboardController = remember { RealFakeSoftwareKeyboardController() }
+    val insetsControllerObserver = remember { WindowInsetsControllerObserver(hostView.windowInsetsController!!) }
 
     Box(
       modifier
@@ -128,6 +130,7 @@ fun FakeSystemUiBuilder(
           keyboardController = keyboardController,
           windowFlags = windowFlags,
           hostView = hostView,
+          insetsControllerObserver = insetsControllerObserver,
         )
       }
 
@@ -228,6 +231,7 @@ interface FakeSystemUiBuilderScope : BoxScope {
   /** See [rememberInsetDispatcher]. */
   interface InsetDispatcher {
     fun dispatchWithBounds(boundsInRoot: IntRect)
+    fun redispatchWithLastBounds()
     fun unregister()
   }
 }
