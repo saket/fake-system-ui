@@ -354,7 +354,9 @@ internal class RealFakeSystemUiBuilderScope(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           if (leadingSpacerWeight > 0f) {
-            Spacer(Modifier.weight(leadingSpacerWeight))
+            Spacer(
+              Modifier.weight(leadingSpacerWeight)
+            )
           }
 
           for (letter in row) {
@@ -376,7 +378,9 @@ internal class RealFakeSystemUiBuilderScope(
           }
 
           if (trailingSpacerWeight > 0f) {
-            Spacer(Modifier.weight(trailingSpacerWeight))
+            Spacer(
+              Modifier.weight(trailingSpacerWeight)
+            )
           }
         }
         Box(
@@ -447,20 +451,21 @@ internal class RealFakeSystemUiBuilderScope(
       transformer.buildInsets(result, transformer.overlayBounds)
     }
 
-    // Apply the insets to the root so that they're propagated to fake overlays as well.
+    // Newer layoutlib versions configure DecorView to consume system insets. Dispatch to the
+    // Compose host so that synthetic insets reach the composition unchanged.
     // Dispatch immediately to ensure the insets are measured before layout (important
     // for scrolling).
-    hostView.rootView.requestLayout()
-    hostView.rootView.doOnLayout {
+    hostView.requestLayout()
+    hostView.doOnLayout {
       it.dispatchApplyWindowInsets(insets)
       it.dispatchWindowInsetsAnimationProgress(insets, emptyList())
     }
     // TODO: We shouldn't have to dispatch these insets twice, but different tests
     //  fail if we omit either the immediate dispatch or the `doOnLayout` dispatch
     // Dispatch again because some of the overlay tests don't work correctly without it:
-    hostView.rootView.post {
-      hostView.rootView.dispatchApplyWindowInsets(insets)
-      hostView.rootView.dispatchWindowInsetsAnimationProgress(insets, emptyList())
+    hostView.post {
+      hostView.dispatchApplyWindowInsets(insets)
+      hostView.dispatchWindowInsetsAnimationProgress(insets, emptyList())
     }
   }
 

@@ -1,6 +1,8 @@
 package me.saket.fakesystemui.internal
 
 import android.content.Context
+import android.graphics.PixelFormat
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -38,8 +40,13 @@ internal fun MatchParentWidthPopup(
 
     val windowManager = hostView.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     val layoutParams = WindowManager.LayoutParams().also {
+      it.gravity = Gravity.START or Gravity.TOP
+      it.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+      it.type = WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL
+      it.token = hostView.applicationWindowToken
       it.width = if (hostView.width == 0) ViewGroup.LayoutParams.MATCH_PARENT else hostView.width
       it.height = if (hostView.height == 0) ViewGroup.LayoutParams.WRAP_CONTENT else hostView.height
+      it.format = PixelFormat.TRANSLUCENT
     }
     windowManager.addView(popupLayout, layoutParams)
 
