@@ -14,7 +14,7 @@ internal class NoOpFakeSystemUiBuilderScope(
   boxScope: BoxScope,
 ) : FakeSystemUiBuilderScope, BoxScope by boxScope {
   override val keyboardController = RealFakeSoftwareKeyboardController()
-  override val windowFlags = FakeWindowProperties()
+  override val windowProperties = FakeWindowProperties()
 
   @Composable override fun StatusBar(modifier: Modifier) = Unit
   @Composable override fun GestureNavigationBar(modifier: Modifier, tint: Color) = Unit

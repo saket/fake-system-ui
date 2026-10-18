@@ -58,7 +58,7 @@ fun FakeSystemUi(
   windowProperties: FakeWindowProperties = FakeWindowProperties(),
   content: @Composable () -> Unit,
 ) {
-  FakeSystemUiBuilder(windowFlags = windowProperties) {
+  FakeSystemUiBuilder(windowProperties = windowProperties) {
     StatusBar()
     content()
     if (showKeyboardByDefault || this.keyboardController.showRequests.collectAsState().value) {
@@ -121,8 +121,7 @@ sealed interface FakeNavigationBarAppearance {
 @Composable
 fun FakeSystemUiBuilder(
   modifier: Modifier = Modifier,
-  // todo: rename to windowProperties
-  windowFlags: FakeWindowProperties = FakeWindowProperties(),
+  windowProperties: FakeWindowProperties = FakeWindowProperties(),
   content: @Composable FakeSystemUiBuilderScope.() -> Unit,
 ) {
   if (SDK_INT < 30) {
@@ -141,12 +140,12 @@ fun FakeSystemUiBuilder(
         .then(navigationBarTinter.contentModifier())
     ) {
       val boxScope: BoxScope = this
-      val builderScope = remember(boxScope, windowFlags, hostView) {
+      val builderScope = remember(boxScope, windowProperties, hostView) {
         RealFakeSystemUiBuilderScope(
           boxScope = boxScope,
           navigationBarTinter = navigationBarTinter,
           keyboardController = keyboardController,
-          windowFlags = windowFlags,
+          windowProperties = windowProperties,
           hostView = hostView,
           insetsControllerObserver = insetsControllerObserver,
         )
@@ -166,7 +165,7 @@ interface FakeSystemUiBuilderScope : BoxScope {
   val keyboardController: FakeSoftwareKeyboardController
 
   /** Window properties used for controlling the appearance of fake system bars. */
-  val windowFlags: FakeWindowProperties
+  val windowProperties: FakeWindowProperties
 
   @Composable
   fun StatusBar(

@@ -96,12 +96,12 @@ class FakeSystemUiTest(
     }
 
     paparazzi.snapshot {
-      val windowFlags = FakeWindowProperties(
+      val windowProperties = FakeWindowProperties(
         lightStatusBar = false,
         lightNavigationBar = false,
         navigationBarContrastEnforced = true,
       )
-      FakeSystemUi(windowProperties = windowFlags) {
+      FakeSystemUi(windowProperties = windowProperties) {
         Box(
           Modifier
             .fillMaxSize()
@@ -120,12 +120,12 @@ class FakeSystemUiTest(
     }
 
     paparazzi.snapshot {
-      val windowFlags = FakeWindowProperties(
+      val windowProperties = FakeWindowProperties(
         lightStatusBar = true,
         lightNavigationBar = true,
         navigationBarContrastEnforced = true,
       )
-      FakeSystemUi(windowProperties = windowFlags) {
+      FakeSystemUi(windowProperties = windowProperties) {
         Box(
           Modifier
             .fillMaxSize()
@@ -205,7 +205,7 @@ class FakeSystemUiTest(
     }
   }
 
-  @Test fun `fixed tint ignores background and window flags`() {
+  @Test fun `fixed tint ignores background and window properties`() {
     if (config != ScreenshotTestConfig.PhoneLight) {
       throw AssumptionViolatedException("only one device configuration is needed")
     }

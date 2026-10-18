@@ -93,7 +93,7 @@ internal class RealFakeSystemUiBuilderScope(
   private val boxScope: BoxScope,
   private val navigationBarTinter: NavigationBarTinter,
   override val keyboardController: FakeSoftwareKeyboardController,
-  override val windowFlags: FakeWindowProperties,
+  override val windowProperties: FakeWindowProperties,
   private val hostView: View,
   private val insetsControllerObserver: WindowInsetsControllerObserver,
 ) : FakeSystemUiBuilderScope, BoxScope by boxScope {
@@ -102,7 +102,7 @@ internal class RealFakeSystemUiBuilderScope(
 
   @Composable
   override fun StatusBar(modifier: Modifier) {
-    val contentColor = if (windowFlags.lightStatusBar) Color.Black else Color.White
+    val contentColor = if (windowProperties.lightStatusBar) Color.Black else Color.White
     val isVisible = insetsControllerObserver.requestedVisibleTypes.collectAsState().value and
       AndroidWindowInsets.Type.statusBars() != 0
 
@@ -183,13 +183,13 @@ internal class RealFakeSystemUiBuilderScope(
 
   @Composable
   override fun ThreeButtonNavigationBar(modifier: Modifier) {
-    val buttonColor = if (windowFlags.lightNavigationBar) {
+    val buttonColor = if (windowProperties.lightNavigationBar) {
       Color.Black
     } else {
       Color.White
     }
-    val scrimColor = if (windowFlags.navigationBarContrastEnforced) {
-      if (windowFlags.lightNavigationBar) {
+    val scrimColor = if (windowProperties.navigationBarContrastEnforced) {
+      if (windowProperties.lightNavigationBar) {
         //https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/core/java/com/android/internal/policy/DecorView.java;l=141;drc=61197364367c9e404c7da6900658f1b16c42d0da
         Color.White.copy(alpha = 0.9f)
       } else {
