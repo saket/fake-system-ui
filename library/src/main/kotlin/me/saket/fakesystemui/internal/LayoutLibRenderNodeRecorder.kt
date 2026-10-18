@@ -2,9 +2,9 @@ package me.saket.fakesystemui.internal
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.graphics.RenderNode
+import android.media.Image
 import android.media.ImageReader
 import android.view.AttachInfo_Accessor
 import android.view.LayoutlibRenderer
@@ -15,13 +15,11 @@ import androidx.annotation.RequiresApi
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.unit.IntSize
-import androidx.core.graphics.createBitmap
 import me.saket.fakesystemui.FakeSystemUiBuilderScope
-import java.nio.ByteBuffer
 import android.graphics.Canvas as AndroidCanvas
 
 /**
- * Captures hardware-accelerated Canvas drawings into a [Bitmap] using LayoutLib's rendering
+ * Captures hardware-accelerated Canvas drawings into pixels using LayoutLib's rendering
  * pipeline.
  *
  * This is the only reliable way to record HW effects such as shared element transitions, ripple
@@ -45,7 +43,8 @@ internal class LayoutLibRenderNodeRecorder(context: Context, val size: IntSize) 
       it.reset()
     }
 
-  fun record(recorder: (Canvas) -> Unit): Bitmap {
+  /** Returns the drawn RGBA pixels. */
+  fun record(recorder: (Canvas) -> Unit): Image.Plane {
     try {
       renderNode.setPosition(0, 0, size.width, size.height)
       val renderNodeCanvas = Canvas(renderNode.beginRecording(size.width, size.height))
@@ -57,12 +56,11 @@ internal class LayoutLibRenderNodeRecorder(context: Context, val size: IntSize) 
     // Rebind the same surface to avoid stale frames after Paparazzi resets its clock between tests.
     hwRenderer.threadedRenderer.setSurface(imageReader.surface)
     hwRenderer.draw(listOf(renderNodeDrawer))
-    val bitmap = image.planes[0].buffer.toBitmap(size)
 
     // Paparazzi's screenshot includes every window, including the window that holds renderNodeDrawer.
     // Clear the recording so that this window does not draw a copy of the content on top of the app.
     renderNode.discardDisplayList()
-    return bitmap
+    return image.planes[0]
   }
 
   override fun close() {
@@ -89,11 +87,4 @@ internal class LayoutLibRenderNodeRecorder(context: Context, val size: IntSize) 
       canvas.drawRenderNode(node)
     }
   }
-}
-
-private fun ByteBuffer.toBitmap(size: IntSize): Bitmap {
-  val bitmap = createBitmap(size.width, size.height)
-  rewind()
-  bitmap.copyPixelsFromBuffer(this)
-  return bitmap
 }

@@ -51,6 +51,8 @@ import android.view.WindowInsets as AndroidWindowInsets
  */
 @Composable
 fun FakeSystemUi(
+  // todo: should this be a composable slot instead? an enum is useful only for parameterized runners.
+  //  and that benefit is gone once it switches to a sealed interface.
   navigationBarAppearance: FakeNavigationBarAppearance = ThreeButtonNavigation,
   showKeyboardByDefault: Boolean = false,
   windowProperties: FakeWindowProperties = FakeWindowProperties(),
@@ -119,6 +121,7 @@ sealed interface FakeNavigationBarAppearance {
 @Composable
 fun FakeSystemUiBuilder(
   modifier: Modifier = Modifier,
+  // todo: rename to windowProperties
   windowFlags: FakeWindowProperties = FakeWindowProperties(),
   content: @Composable FakeSystemUiBuilderScope.() -> Unit,
 ) {
@@ -135,7 +138,7 @@ fun FakeSystemUiBuilder(
     Box(
       modifier
         .fillMaxSize()
-        .then(navigationBarTinter.contentModifier)
+        .then(navigationBarTinter.contentModifier())
     ) {
       val boxScope: BoxScope = this
       val builderScope = remember(boxScope, windowFlags, hostView) {

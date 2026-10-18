@@ -1,5 +1,6 @@
 package me.saket.fakesystemui
 
+import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
@@ -21,7 +22,8 @@ internal interface NavigationBarTinter {
   /**
    * Applied to the app's content, so that the tinter can capture what is drawn behind the handle.
    */
-  val contentModifier: Modifier
+  @SuppressLint("ModifierFactoryExtensionFunction")
+  @Composable fun contentModifier(): Modifier
 
   /**
    * The gesture handle's tint from the latest capture of the area behind it.
@@ -61,8 +63,9 @@ private object PlaceholderNavigationBarTinter : NavigationBarTinter.Factory {
   @Composable
   override fun rememberTinter(): NavigationBarTinter {
     return remember {
+      @SuppressLint("ModifierFactoryExtensionFunction")
       object : NavigationBarTinter {
-        override val contentModifier: Modifier get() = Modifier
+        @Composable override fun contentModifier(): Modifier = Modifier
         override fun tintBehind(boundsOnScreen: Rect): Color = Color.Black
         override fun requestTints(): AutoCloseable = AutoCloseable {}
       }
