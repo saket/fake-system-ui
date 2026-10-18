@@ -15,6 +15,7 @@ import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.findViewTreeSavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import me.saket.fakesystemui.FakeSystemUiBuilderScope
 
 /**
  * A custom popup implementation that matches the host view's size. Used instead of
@@ -31,7 +32,7 @@ internal fun MatchParentWidthPopup(
 
   DisposableEffect(Unit) {
     val popupLayout = ComposeView(hostView.context).apply {
-      id = android.R.id.content
+      setTag(FakeSystemUiBuilderScope.InsetOverlayTagKey, Unit)
       setViewTreeLifecycleOwner(hostView.findViewTreeLifecycleOwner())
       setViewTreeSavedStateRegistryOwner(hostView.findViewTreeSavedStateRegistryOwner())
       setParentCompositionContext(compositionContext)

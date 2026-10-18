@@ -30,12 +30,12 @@ class FakeSystemUiAccessibilityTest {
   )
 
   @Test fun `system bars do not participate in accessibility`(
-    @TestParameter navigationBarAppearance: FakeNavigationBarAppearance,
+    @TestParameter navigationBarAppearance: NavigationBarAppearanceParam,
   ) {
     paparazzi.snapshot {
       FakeSystemUi(
         showKeyboardByDefault = true,
-        navigationBarAppearance = navigationBarAppearance
+        navigationBarAppearance = navigationBarAppearance.appearance
       ) {
         Box(
           Modifier
@@ -61,7 +61,7 @@ class FakeSystemUiAccessibilityTest {
     paparazzi.snapshot {
       FakeSystemUi(
         showKeyboardByDefault = true,
-        navigationBarAppearance = FakeNavigationBarAppearance.GestureNavigation,
+        navigationBarAppearance = FakeNavigationBarAppearance.GestureNavigation(),
       ) {
         Box(
           Modifier

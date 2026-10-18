@@ -55,14 +55,14 @@ class FakeSystemUiTest(
   )
 
   @Test fun `system bars`(
-    @TestParameter navigationBarAppearance: FakeNavigationBarAppearance,
+    @TestParameter navigationBarAppearance: NavigationBarAppearanceParam,
   ) {
     if (config.isLargeFontSize) {
       throw AssumptionViolatedException("no text rendered in this test")
     }
 
     paparazzi.snapshot {
-      FakeSystemUi(navigationBarAppearance) {
+      FakeSystemUi(navigationBarAppearance.appearance) {
         Box(
           Modifier
             .fillMaxSize()
@@ -136,12 +136,12 @@ class FakeSystemUiTest(
   }
 
   @Test fun keyboard(
-    @TestParameter navigationBarAppearance: FakeNavigationBarAppearance,
+    @TestParameter navigationBarAppearance: NavigationBarAppearanceParam,
   ) {
     paparazzi.snapshot {
       FakeSystemUi(
         showKeyboardByDefault = true,
-        navigationBarAppearance = navigationBarAppearance,
+        navigationBarAppearance = navigationBarAppearance.appearance,
       ) {
         Box(
           Modifier
@@ -174,7 +174,7 @@ class FakeSystemUiTest(
     paparazzi.snapshot {
       FakeSystemUi(
         showKeyboardByDefault = false,
-        navigationBarAppearance = FakeNavigationBarAppearance.GestureNavigation,
+        navigationBarAppearance = FakeNavigationBarAppearance.GestureNavigation(),
       ) {
         Box(
           Modifier
@@ -205,8 +205,30 @@ class FakeSystemUiTest(
     }
   }
 
+  @Test fun `fixed tint ignores background and window flags`() {
+    if (config != ScreenshotTestConfig.PhoneLight) {
+      throw AssumptionViolatedException("only one device configuration is needed")
+    }
+
+    paparazzi.snapshot {
+      FakeSystemUi(
+        navigationBarAppearance = FakeNavigationBarAppearance.GestureNavigation(tint = Color.Magenta),
+        windowProperties = FakeWindowProperties(
+          lightNavigationBar = false,
+          navigationBarContrastEnforced = true,
+        ),
+      ) {
+        Box(
+          Modifier
+            .fillMaxSize()
+            .background(Color.White)
+        )
+      }
+    }
+  }
+
   @Test fun `auto tint navigation bar based on content underneath in real time`() {
-    if (config.isDarkTheme || config.isLargeFontSize) {
+    if (config != ScreenshotTestConfig.PhoneLight) {
       throw AssumptionViolatedException("variant not needed")
     }
 
@@ -217,7 +239,9 @@ class FakeSystemUiTest(
         backgroundColor.animateTo(Color.White, animationSpec = tween(500, easing = LinearEasing))
       }
 
-      FakeSystemUi(navigationBarAppearance = FakeNavigationBarAppearance.GestureNavigation) {
+      FakeSystemUi(
+        navigationBarAppearance = FakeNavigationBarAppearance.GestureNavigation(),
+      ) {
         Box(
           Modifier
             .fillMaxSize()

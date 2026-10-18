@@ -3,7 +3,6 @@ package me.saket.fakesystemui.internal
 import android.annotation.SuppressLint
 import android.graphics.Insets
 import android.view.View
-import android.view.ViewParent
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.TweenSpec
@@ -45,6 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.toRect
 import androidx.compose.ui.graphics.BlendMode
@@ -57,10 +58,11 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -72,7 +74,6 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.roundToIntRect
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastFold
 import androidx.core.view.doOnLayout
@@ -83,13 +84,14 @@ import me.saket.fakesystemui.FakeSoftwareKeyboardController
 import me.saket.fakesystemui.FakeSystemUiBuilderScope
 import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetDispatcher
 import me.saket.fakesystemui.FakeWindowProperties
+import me.saket.fakesystemui.NavigationBarTinter
 import kotlin.math.sqrt
 import android.view.WindowInsets as AndroidWindowInsets
 
 @RequiresApi(30)
 internal class RealFakeSystemUiBuilderScope(
   private val boxScope: BoxScope,
-  private val colorExtractor: LayoutColorExtractor,
+  private val navigationBarTinter: NavigationBarTinter,
   override val keyboardController: FakeSoftwareKeyboardController,
   override val windowFlags: FakeWindowProperties,
   private val hostView: View,
@@ -163,15 +165,18 @@ internal class RealFakeSystemUiBuilderScope(
   }
 
   @Composable
-  override fun GestureNavigationBar(modifier: Modifier) {
+  override fun GestureNavigationBar(
+    modifier: Modifier,
+    tint: Color,
+  ) {
     NavigationBar(modifier) {
       Box(
         Modifier
           .align(Alignment.Center)
           .height(24.dp)
-          .tintBasedOnUnderneathContent(colorExtractor)
+          .then(if (tint.isSpecified) Modifier else Modifier.tintBasedOnContentUnderneath(navigationBarTinter))
           .requiredSize(width = if (isLargeDisplay) 200.dp else 100.dp, height = 4.dp)
-          .background(Color.Black, RoundedCornerShape(4.dp))
+          .background(tint.takeOrElse { Color.Black }, RoundedCornerShape(4.dp))
       )
     }
   }
@@ -284,18 +289,6 @@ internal class RealFakeSystemUiBuilderScope(
     MatchParentWidthPopup {
       Box(Modifier.clearAndSetSemantics {}) {
         content()
-      }
-
-      // Hide the overlay from the screenshot used for color extraction. A simpler solution would
-      // have involved a `Modifier.drawWithContent()` that skipped the drawing when a screenshot
-      // was in progress, but that is weirdly proving impossible to implement with layoutlib.
-      val view = LocalView.current
-      DisposableEffect(view) {
-        val contentView = view.findParentById(android.R.id.content)
-        colorExtractor.viewsExcludedFromColorExtraction.add(contentView)
-        onDispose {
-          colorExtractor.viewsExcludedFromColorExtraction.remove(contentView)
-        }
       }
     }
   }
@@ -486,46 +479,43 @@ internal class RealFakeSystemUiBuilderScope(
   }
 }
 
-/** Applies a tint to all canvas drawings made by downstream modifiers. */
+/**
+ * Tints all canvas drawings made by downstream modifiers with a color that contrasts with the content behind them.
+ */
 @Composable
-@RequiresApi(29)
 @SuppressLint("ComposeComposableModifier")
-private fun Modifier.tintBasedOnUnderneathContent(colorExtractor: LayoutColorExtractor): Modifier {
-  var boundsInRoot: IntRect? by remember { mutableStateOf(null) }
-  return this
-    .onPlaced { coordinates -> boundsInRoot = coordinates.boundsInRoot().roundToIntRect() }
-    .tint {
-      val colorBehind = colorExtractor.extractColorFromBounds { bitmap ->
-        // Note to self: when paparazzi's AccessibilityRenderExtension is
-        // used, the window size may be larger than the content size.
-        boundsInRoot!!.intersect(IntRect(0, 0, bitmap.width, bitmap.height))
-      }
-      when {
-        colorBehind == null -> Color.Transparent
-        colorBehind.luminance() > 0.4f -> Color.Black
-        else -> Color.White
-      }
-    }
-}
-
-private fun Modifier.tint(color: () -> Color): Modifier {
-  return this.drawWithCache {
-    val paint = Paint()
-    onDrawWithContent {
-      paint.colorFilter = ColorFilter.tint(color(), BlendMode.SrcIn)
-      drawIntoCanvas {
-        it.saveLayer(size.toRect(), paint)
-        drawContent()
-        it.restore()
-      }
+private fun Modifier.tintBasedOnContentUnderneath(tinter: NavigationBarTinter): Modifier {
+  DisposableEffect(tinter) {
+    val tintRequest = tinter.requestTints()
+    onDispose {
+      tintRequest.close()
     }
   }
-}
 
-private tailrec fun View.findParentById(id: Int, current: ViewParent? = parent): View {
-  if (current is View && current.id == id) return current
-  val next = current?.parent ?: error("no parent found with id = $id")
-  return findParentById(id, next)
+  val view = LocalView.current
+  val viewPositionOnScreen = remember { IntArray(2) }
+  var boundsOnScreen by remember { mutableStateOf(Rect.Zero) }
+  return this
+    .onGloballyPositioned { coordinates ->
+      // Not using positionOnScreen() because it returns infinity in the first frame of Paparazzi tests.
+      // Compose UI saves the window's position and updates it only when the animation clock has moved
+      // away from 0. Paparazzi's clock starts at 0, and the handle is usually positioned only once.
+      view.getLocationOnScreen(viewPositionOnScreen)
+      boundsOnScreen = coordinates.boundsInRoot().translate(
+        Offset(viewPositionOnScreen[0].toFloat(), viewPositionOnScreen[1].toFloat())
+      )
+    }
+    .drawWithCache {
+      val paint = Paint()
+      onDrawWithContent {
+        paint.colorFilter = ColorFilter.tint(tinter.tintBehind(boundsOnScreen), BlendMode.SrcIn)
+        drawIntoCanvas {
+          it.saveLayer(size.toRect(), paint)
+          drawContent()
+          it.restore()
+        }
+      }
+    }
 }
 
 private object BackButtonShape : Shape {

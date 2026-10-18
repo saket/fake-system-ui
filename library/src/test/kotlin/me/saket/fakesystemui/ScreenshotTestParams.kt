@@ -11,6 +11,7 @@ import com.android.resources.ScreenRatio
 import com.android.resources.ScreenSize
 import com.android.resources.TouchScreen
 
+@Suppress("unused")
 enum class ScreenshotTestConfig(
   val deviceConfig: DeviceConfig,
 ) {
@@ -54,6 +55,12 @@ enum class ScreenshotTestConfig(
 enum class SystemTheme(val nightMode: NightMode) {
   DarkMode(NightMode.NIGHT),
   LightMode(NightMode.NOTNIGHT),
+}
+
+@Suppress("unused")
+enum class NavigationBarAppearanceParam(val appearance: FakeNavigationBarAppearance) {
+  GestureNavigation(FakeNavigationBarAppearance.GestureNavigation()),
+  ThreeButtonNavigation(FakeNavigationBarAppearance.ThreeButtonNavigation),
 }
 
 private val DeviceConfig.Companion.PIXEL_10_PRO_FOLD

@@ -9,6 +9,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
@@ -17,7 +18,6 @@ import androidx.compose.ui.unit.IntRect
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.saket.fakesystemui.FakeNavigationBarAppearance.GestureNavigation
 import me.saket.fakesystemui.FakeNavigationBarAppearance.ThreeButtonNavigation
-import me.saket.fakesystemui.internal.LayoutColorExtractor
 import me.saket.fakesystemui.internal.NoOpFakeSystemUiBuilderScope
 import me.saket.fakesystemui.internal.RealFakeSoftwareKeyboardController
 import me.saket.fakesystemui.internal.RealFakeSystemUiBuilderScope
@@ -63,36 +63,51 @@ fun FakeSystemUi(
       SoftKeyboard()
     }
     when (navigationBarAppearance) {
-      GestureNavigation -> GestureNavigationBar()
-      ThreeButtonNavigation -> ThreeButtonNavigationBar()
+      is GestureNavigation -> GestureNavigationBar(tint = navigationBarAppearance.tint)
+      is ThreeButtonNavigation -> ThreeButtonNavigationBar()
     }
   }
 }
 
 /**
- * Window properties/attributes to control the appearance of fake system bars. These
- * names are terrible, but they mirror the real Android window flags of the same name.
- *
- * @param lightStatusBar When true, status bar content (clock, icons) is drawn dark
- *   for use on light backgrounds. Maps to [android.R.attr.windowLightStatusBar].
- * @param lightNavigationBar When true, navigation bar buttons are drawn dark for
- *   use on light backgrounds. Maps to [android.R.attr.windowLightNavigationBar].
- * @param navigationBarContrastEnforced When true, a translucent scrim is drawn behind the
- *   navigation bar to ensure button contrast. Maps to [android.R.attr.enforceNavigationBarContrast].
+ * Window properties/attributes to control the appearance of fake system bars. Their
+ * names are terrible, but they mirror the real Android window flags with the same names.
  */
 data class FakeWindowProperties(
+  /**
+   * When true, status bar content (clock, icons) is drawn dark
+   * for use on light backgrounds. Maps to [android.R.attr.windowLightStatusBar].
+   */
   val lightStatusBar: Boolean = true,
+  /**
+   * When true, three-button navigation buttons are drawn dark for
+   * use on light backgrounds. Maps to [android.R.attr.windowLightNavigationBar].
+   * Just like Android, this flag does not control the gesture navigation bar's color.
+   */
   val lightNavigationBar: Boolean = true,
+  /**
+   * When true, a translucent scrim is drawn behind the
+   * navigation bar to ensure button contrast. Maps to [android.R.attr.enforceNavigationBarContrast].
+   */
   val navigationBarContrastEnforced: Boolean = false,
 )
 
 /**
  * The navigation bar's appearance, rendered by [FakeSystemUi()][FakeSystemUi].
- *
- * This is an enum so that it can be easily used with any parameterized test runner. */
-enum class FakeNavigationBarAppearance {
-  GestureNavigation,
-  ThreeButtonNavigation,
+ */
+sealed interface FakeNavigationBarAppearance {
+  /**
+   * Gesture navigation with a customizable handle tint. [Color.Unspecified] selects automatic tint.
+   *
+   * For a fixed tint, use `GestureNavigation(tint = Color.White)`. This only changes the fake handle;
+   * it does not control the gesture handle on a real device.
+   */
+  data class GestureNavigation(
+    val tint: Color = Color.Unspecified,
+  ) : FakeNavigationBarAppearance
+
+  /** Three-button navigation whose appearance follows [FakeWindowProperties]. */
+  data object ThreeButtonNavigation : FakeNavigationBarAppearance
 }
 
 /**
@@ -113,20 +128,20 @@ fun FakeSystemUiBuilder(
     }
   } else {
     val hostView = LocalView.current
-    val colorExtractor = remember { LayoutColorExtractor() }
+    val navigationBarTinter = InstalledNavigationBarTinterFactory.rememberTinter()
     val keyboardController = remember { RealFakeSoftwareKeyboardController() }
     val insetsControllerObserver = remember { WindowInsetsControllerObserver(hostView.windowInsetsController!!) }
 
     Box(
       modifier
         .fillMaxSize()
-        .then(colorExtractor.recordBitmap())
+        .then(navigationBarTinter.contentModifier)
     ) {
       val boxScope: BoxScope = this
       val builderScope = remember(boxScope, windowFlags, hostView) {
         RealFakeSystemUiBuilderScope(
           boxScope = boxScope,
-          colorExtractor = colorExtractor,
+          navigationBarTinter = navigationBarTinter,
           keyboardController = keyboardController,
           windowFlags = windowFlags,
           hostView = hostView,
@@ -155,9 +170,17 @@ interface FakeSystemUiBuilderScope : BoxScope {
     modifier: Modifier = Modifier,
   )
 
+  /**
+   * Renders a fake gesture navigation bar.
+   *
+   * @param tint When [Color.Unspecified], selects a contrasting tint based on the content behind the handle.
+   *   Automatic tint currently works only in Paparazzi screenshot tests. This tint is intentionally separate
+   *   from [FakeWindowProperties.lightNavigationBar] to mimic Android's behavior.
+   */
   @Composable
   fun GestureNavigationBar(
     modifier: Modifier = Modifier,
+    tint: Color = Color.Unspecified,
   )
 
   @Composable
@@ -233,6 +256,14 @@ interface FakeSystemUiBuilderScope : BoxScope {
     fun dispatchWithBounds(boundsInRoot: IntRect)
     fun redispatchWithLastBounds()
     fun unregister()
+  }
+
+  companion object {
+    /**
+     * Key for the tag that [FakeSystemUi] applies to popup roots with fake system bars.
+     * [NavigationBarTinter] uses this tag to exclude the bars when it samples the app's content.
+     */
+    val InsetOverlayTagKey: Int = R.id.fake_system_ui_inset_overlay
   }
 }
 

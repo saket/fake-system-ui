@@ -4,6 +4,7 @@ import android.view.WindowInsets
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntRect
 import me.saket.fakesystemui.FakeSystemUiBuilderScope
 import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetDispatcher
@@ -16,7 +17,7 @@ internal class NoOpFakeSystemUiBuilderScope(
   override val windowFlags = FakeWindowProperties()
 
   @Composable override fun StatusBar(modifier: Modifier) = Unit
-  @Composable override fun GestureNavigationBar(modifier: Modifier) = Unit
+  @Composable override fun GestureNavigationBar(modifier: Modifier, tint: Color) = Unit
   @Composable override fun ThreeButtonNavigationBar(modifier: Modifier) = Unit
   @Composable override fun SoftKeyboard(modifier: Modifier) = Unit
   @Composable override fun InsetOverlay(content: @Composable () -> Unit) = Unit
