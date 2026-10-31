@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.PixelFormat
 import android.view.Gravity
 import android.view.View
+import android.view.View.OnAttachStateChangeListener
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.compose.runtime.Composable
@@ -16,6 +17,7 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.findViewTreeSavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import me.saket.fakesystemui.FakeSystemUiBuilderScope
+import java.io.Closeable
 
 /**
  * A custom popup implementation that matches the host view's size. Used instead of
@@ -53,13 +55,14 @@ internal fun MatchParentWidthPopup(
 
     // Layoutlib's WindowManager does not seem to assign full widths to layouts even if
     // they use Modifier.fillMaxWidth(). Workaround this by setting a fixed width to overlays.
-    hostView.doOnEveryLayout {
+    val hostLayoutRegistration = hostView.doOnEveryLayout {
       layoutParams.width = it.width
       layoutParams.height = it.height
       windowManager.updateViewLayout(popupLayout, layoutParams)
     }
 
     onDispose {
+      hostLayoutRegistration.close()
       popupLayout.disposeComposition()
       try {
         windowManager.removeViewImmediate(popupLayout)
@@ -75,14 +78,10 @@ internal fun MatchParentWidthPopup(
 /**
  * `doOnLayout` runs only once at the beginning; `doOnEveryLayout` runs every time.
  */
-private inline fun View.doOnEveryLayout(crossinline action: (view: View) -> Unit) {
+private inline fun View.doOnEveryLayout(crossinline action: (view: View) -> Unit): Closeable {
   val listener = View.OnLayoutChangeListener { view, _, _, _, _, _, _, _, _ -> action(view) }
 
-  if (isAttachedToWindow) {
-    addOnLayoutChangeListener(listener)
-  }
-
-  addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+  val attachListener = object : OnAttachStateChangeListener {
     override fun onViewDetachedFromWindow(v: View) {
       removeOnLayoutChangeListener(listener)
     }
@@ -90,5 +89,14 @@ private inline fun View.doOnEveryLayout(crossinline action: (view: View) -> Unit
     override fun onViewAttachedToWindow(v: View) {
       addOnLayoutChangeListener(listener)
     }
-  })
+  }
+  if (isAttachedToWindow) {
+    addOnLayoutChangeListener(listener)
+  }
+  addOnAttachStateChangeListener(attachListener)
+
+  return Closeable {
+    removeOnLayoutChangeListener(listener)
+    removeOnAttachStateChangeListener(attachListener)
+  }
 }

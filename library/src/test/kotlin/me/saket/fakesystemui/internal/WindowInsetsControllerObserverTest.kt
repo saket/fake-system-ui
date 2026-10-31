@@ -83,7 +83,7 @@ class WindowInsetsControllerObserverTest {
   }
 }
 
-private class NoOpSnapshotHandler : SnapshotHandler {
+internal class NoOpSnapshotHandler : SnapshotHandler {
   override fun newFrameHandler(
     snapshot: Snapshot,
     frameCount: Int,
