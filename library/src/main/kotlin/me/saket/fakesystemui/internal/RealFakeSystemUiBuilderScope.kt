@@ -1,6 +1,5 @@
 package me.saket.fakesystemui.internal
 
-import android.annotation.SuppressLint
 import android.graphics.Insets
 import android.view.View
 import androidx.annotation.RequiresApi
@@ -35,36 +34,21 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.toRect
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposePath
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.shadow.Shadow
-import androidx.compose.ui.graphics.takeOrElse
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
@@ -84,14 +68,12 @@ import me.saket.fakesystemui.FakeSoftwareKeyboardController
 import me.saket.fakesystemui.FakeSystemUiBuilderScope
 import me.saket.fakesystemui.FakeSystemUiBuilderScope.InsetDispatcher
 import me.saket.fakesystemui.FakeWindowProperties
-import me.saket.fakesystemui.NavigationBarTinter
 import kotlin.math.sqrt
 import android.view.WindowInsets as AndroidWindowInsets
 
 @RequiresApi(30)
 internal class RealFakeSystemUiBuilderScope(
   private val boxScope: BoxScope,
-  private val navigationBarTinter: NavigationBarTinter,
   override val keyboardController: FakeSoftwareKeyboardController,
   override val windowProperties: FakeWindowProperties,
   private val hostView: View,
@@ -174,9 +156,8 @@ internal class RealFakeSystemUiBuilderScope(
         Modifier
           .align(Alignment.Center)
           .height(24.dp)
-          .then(if (tint.isSpecified) Modifier else Modifier.tintBasedOnContentUnderneath(navigationBarTinter))
           .requiredSize(width = if (isLargeDisplay) 200.dp else 100.dp, height = 4.dp)
-          .background(tint.takeOrElse { Color.Black }, RoundedCornerShape(4.dp))
+          .background(tint, RoundedCornerShape(4.dp))
       )
     }
   }
@@ -477,45 +458,6 @@ internal class RealFakeSystemUiBuilderScope(
       )
     }
   }
-}
-
-/**
- * Tints all canvas drawings made by downstream modifiers with a color that contrasts with the content behind them.
- */
-@Composable
-@SuppressLint("ComposeComposableModifier")
-private fun Modifier.tintBasedOnContentUnderneath(tinter: NavigationBarTinter): Modifier {
-  DisposableEffect(tinter) {
-    val tintRequest = tinter.requestTints()
-    onDispose {
-      tintRequest.close()
-    }
-  }
-
-  val view = LocalView.current
-  val viewPositionOnScreen = remember { IntArray(2) }
-  var boundsOnScreen by remember { mutableStateOf(Rect.Zero) }
-  return this
-    .onGloballyPositioned { coordinates ->
-      // Not using positionOnScreen() because it returns infinity in the first frame of Paparazzi tests.
-      // Compose UI saves the window's position and updates it only when the animation clock has moved
-      // away from 0. Paparazzi's clock starts at 0, and the handle is usually positioned only once.
-      view.getLocationOnScreen(viewPositionOnScreen)
-      boundsOnScreen = coordinates.boundsInRoot().translate(
-        Offset(viewPositionOnScreen[0].toFloat(), viewPositionOnScreen[1].toFloat())
-      )
-    }
-    .drawWithCache {
-      val paint = Paint()
-      onDrawWithContent {
-        paint.colorFilter = ColorFilter.tint(tinter.tintBehind(boundsOnScreen), BlendMode.SrcIn)
-        drawIntoCanvas {
-          it.saveLayer(size.toRect(), paint)
-          drawContent()
-          it.restore()
-        }
-      }
-    }
 }
 
 private object BackButtonShape : Shape {

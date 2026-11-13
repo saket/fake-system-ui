@@ -99,13 +99,13 @@ data class FakeWindowProperties(
  */
 sealed interface FakeNavigationBarAppearance {
   /**
-   * Gesture navigation with a customizable handle tint. [Color.Unspecified] selects automatic tint.
+   * Gesture navigation with a handle color set by [tint].
    *
-   * For a fixed tint, use `GestureNavigation(tint = Color.White)`. This only changes the fake handle;
-   * it does not control the gesture handle on a real device.
+   * The handle ignores [FakeWindowProperties] to mirror Android, which automatically
+   * selects the handle color from the content underneath.
    */
   data class GestureNavigation(
-    val tint: Color = Color.Unspecified,
+    val tint: Color = Color.Black,
   ) : FakeNavigationBarAppearance
 
   /** Three-button navigation whose appearance follows [FakeWindowProperties]. */
@@ -130,20 +130,14 @@ fun FakeSystemUiBuilder(
     }
   } else {
     val hostView = LocalView.current
-    val navigationBarTinter = InstalledNavigationBarTinterFactory.rememberTinter()
     val keyboardController = remember { RealFakeSoftwareKeyboardController() }
     val insetsControllerObserver = remember { WindowInsetsControllerObserver(hostView.windowInsetsController!!) }
 
-    Box(
-      modifier
-        .fillMaxSize()
-        .then(navigationBarTinter.contentModifier())
-    ) {
+    Box(modifier.fillMaxSize()) {
       val boxScope: BoxScope = this
       val builderScope = remember(boxScope, windowProperties, hostView) {
         RealFakeSystemUiBuilderScope(
           boxScope = boxScope,
-          navigationBarTinter = navigationBarTinter,
           keyboardController = keyboardController,
           windowProperties = windowProperties,
           hostView = hostView,
@@ -175,14 +169,13 @@ interface FakeSystemUiBuilderScope : BoxScope {
   /**
    * Renders a fake gesture navigation bar.
    *
-   * @param tint When [Color.Unspecified], selects a contrasting tint based on the content behind the handle.
-   *   Automatic tint currently works only in Paparazzi screenshot tests. This tint is intentionally separate
-   *   from [FakeWindowProperties.lightNavigationBar] to mimic Android's behavior.
+   * @param tint The handle's color. Defaults to black, independent of [FakeWindowProperties].
+   *   Pass an explicit color when the handle needs a different tint for the content behind it.
    */
   @Composable
   fun GestureNavigationBar(
     modifier: Modifier = Modifier,
-    tint: Color = Color.Unspecified,
+    tint: Color = Color.Black,
   )
 
   @Composable
@@ -197,8 +190,7 @@ interface FakeSystemUiBuilderScope : BoxScope {
 
   /**
    * Renders [content] as a full-size overlay on top of the current layout. Works reliably with
-   * Paparazzi (unlike Compose's `Popup()`). Overlays are excluded from accessibility and color
-   * extraction so they don't interfere with navigation bar tinting.
+   * Paparazzi (unlike Compose's `Popup()`). Overlays are excluded from accessibility.
    *
    * See [rememberInsetDispatcher] for dispatching insets from overlays.
    */
@@ -261,10 +253,7 @@ interface FakeSystemUiBuilderScope : BoxScope {
   }
 
   companion object {
-    /**
-     * Key for the tag that [FakeSystemUi] applies to popup roots with fake system bars.
-     * [NavigationBarTinter] uses this tag to exclude the bars when it samples the app's content.
-     */
+    /** Key for the tag that [FakeSystemUi] applies to popup roots with fake system bars. */
     val InsetOverlayTagKey: Int = R.id.fake_system_ui_inset_overlay
   }
 }

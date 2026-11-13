@@ -1,16 +1,12 @@
 package me.saket.fakesystemui
 
 import android.view.WindowInsets
-import androidx.compose.animation.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -141,7 +137,12 @@ class FakeSystemUiTest(
     paparazzi.snapshot {
       FakeSystemUi(
         showKeyboardByDefault = true,
-        navigationBarAppearance = navigationBarAppearance.appearance,
+        navigationBarAppearance = when (val appearance = navigationBarAppearance.appearance) {
+          is FakeNavigationBarAppearance.GestureNavigation -> appearance.copy(
+            tint = if (isSystemInDarkTheme()) Color.White else Color.Black,
+          )
+          is FakeNavigationBarAppearance.ThreeButtonNavigation -> appearance
+        },
       ) {
         Box(
           Modifier
@@ -214,6 +215,7 @@ class FakeSystemUiTest(
       FakeSystemUi(
         navigationBarAppearance = FakeNavigationBarAppearance.GestureNavigation(tint = Color.Magenta),
         windowProperties = FakeWindowProperties(
+          lightStatusBar = true,
           lightNavigationBar = false,
           navigationBarContrastEnforced = true,
         ),
@@ -223,38 +225,6 @@ class FakeSystemUiTest(
             .fillMaxSize()
             .background(Color.White)
         )
-      }
-    }
-  }
-
-  @Test fun `auto tint navigation bar based on content underneath in real time`() {
-    if (config != ScreenshotTestConfig.PhoneLight) {
-      throw AssumptionViolatedException("variant not needed")
-    }
-
-    paparazzi.gif(end = 1000) {
-      val backgroundColor = remember { Animatable(Color.White) }
-      LaunchedEffect(Unit) {
-        backgroundColor.animateTo(Color.Black, animationSpec = tween(500, easing = LinearEasing))
-        backgroundColor.animateTo(Color.White, animationSpec = tween(500, easing = LinearEasing))
-      }
-
-      FakeSystemUi(
-        navigationBarAppearance = FakeNavigationBarAppearance.GestureNavigation(),
-      ) {
-        Box(
-          Modifier
-            .fillMaxSize()
-            .background(Color.Gray)
-        ) {
-          Box(
-            Modifier
-              .fillMaxWidth()
-              .height(60.dp)
-              .align(Alignment.BottomCenter)
-              .background(backgroundColor.value)
-          )
-        }
       }
     }
   }
