@@ -34,6 +34,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -48,6 +49,8 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -60,7 +63,6 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastFold
-import androidx.core.view.doOnLayout
 import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.graphics.shapes.toPath
@@ -81,6 +83,25 @@ internal class RealFakeSystemUiBuilderScope(
 ) : FakeSystemUiBuilderScope, BoxScope by boxScope {
 
   private var insetDispatchers = emptyList<RealInsetDispatcher>()
+  private val pendingInsetOverlays = mutableStateListOf<Any>()
+
+  fun Modifier.awaitInsetOverlayLayout(): Modifier {
+    return layout { measurable, constraints ->
+      if (pendingInsetOverlays.isEmpty()) {
+        val placeable = measurable.measure(constraints)
+        layout(placeable.width, placeable.height) {
+          placeable.place(0, 0)
+        }
+      } else {
+        // Popups need the host's size before they can report their insets. Give the host a
+        // size first, then wait for the popup layouts before content measurement. Otherwise,
+        // a scroll container first gets the full host height without the bar insets. Compose
+        // reduces its maximum scroll offset to fit that larger visible area. A later inset
+        // update restores the maximum, but does not restore the lost scroll offset.
+        layout(constraints.maxWidth, constraints.maxHeight) {}
+      }
+    }
+  }
 
   @Composable
   override fun StatusBar(modifier: Modifier) {
@@ -267,8 +288,17 @@ internal class RealFakeSystemUiBuilderScope(
   override fun InsetOverlay(
     content: @Composable () -> Unit
   ) {
+    val overlay = remember { Any() }
+    DisposableEffect(overlay) {
+      pendingInsetOverlays += overlay
+      onDispose { pendingInsetOverlays -= overlay }
+    }
     MatchParentWidthPopup {
-      Box(Modifier.clearAndSetSemantics {}) {
+      Box(
+        Modifier
+          .onGloballyPositioned { pendingInsetOverlays -= overlay }
+          .clearAndSetSemantics {}
+      ) {
         content()
       }
     }
@@ -427,20 +457,9 @@ internal class RealFakeSystemUiBuilderScope(
 
     // Newer layoutlib versions configure DecorView to consume system insets. Dispatch to the
     // Compose host so that synthetic insets reach the composition unchanged.
-    // Dispatch immediately to ensure the insets are measured before layout (important
-    // for scrolling).
     hostView.requestLayout()
-    hostView.doOnLayout {
-      it.dispatchApplyWindowInsets(insets)
-      it.dispatchWindowInsetsAnimationProgress(insets, emptyList())
-    }
-    // TODO: We shouldn't have to dispatch these insets twice, but different tests
-    //  fail if we omit either the immediate dispatch or the `doOnLayout` dispatch
-    // Dispatch again because some of the overlay tests don't work correctly without it:
-    hostView.post {
-      hostView.dispatchApplyWindowInsets(insets)
-      hostView.dispatchWindowInsetsAnimationProgress(insets, emptyList())
-    }
+    hostView.dispatchApplyWindowInsets(insets)
+    hostView.dispatchWindowInsetsAnimationProgress(insets, emptyList())
   }
 
   private companion object {

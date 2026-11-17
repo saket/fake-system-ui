@@ -146,7 +146,13 @@ fun FakeSystemUiBuilder(
       }
 
       CompositionLocalProvider(LocalSoftwareKeyboardController provides keyboardController) {
-        Box(Modifier.showKeyboardOnFocus()) {
+        Box(
+          with(builderScope) {
+            Modifier
+              .awaitInsetOverlayLayout()
+              .showKeyboardOnFocus()
+          }
+        ) {
           content(builderScope)
         }
       }
@@ -209,7 +215,7 @@ interface FakeSystemUiBuilderScope : BoxScope {
    *
    * ```kotlin
    * @Composable
-   * fun FakeSystemUiBuilderScope.FooBar() {
+   * fun FakeSystemUiBuilderScope.FooSystemBar() {
    *   val insetDispatcher = rememberInsetDispatcher { insets, boundsInRoot ->
    *   val fooInsets = Insets.of(
    *       /* left = */ 0,
