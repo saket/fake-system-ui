@@ -25,8 +25,6 @@ android {
 
 dependencies {
   api(libs.androidx.compose.foundation)
-  api(libs.androidx.compose.ui.test.junit)
-  api(libs.paparazzi)
 
   lintChecks(libs.composeLintChecks)
   implementation(libs.androidx.ktx)
@@ -34,8 +32,10 @@ dependencies {
   implementation(libs.androidx.savedstate)
   implementation(libs.androidx.shapes)
 
+  testImplementation(libs.androidx.compose.ui.test.junit)
   testImplementation(libs.assertk)
   testImplementation(libs.junit)
+  testImplementation(libs.paparazzi)
   testImplementation(libs.testParameterInjector)
 }
 

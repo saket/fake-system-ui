@@ -183,20 +183,21 @@ class FakeSystemUiTest(
             .background(Color.Gray)
         ) {
           val focusRequester = remember { FocusRequester() }
-          LaunchedEffect(Unit) { focusRequester.requestFocus() }
+          LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+          }
 
           BasicTextField(
-            modifier =
-              Modifier
-                .imePadding()
-                .systemBarsPadding()
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(16.dp)
-                .focusRequester(focusRequester)
-                .border(2.dp, Color.White, RoundedCornerShape(16.dp))
-                .background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-                .padding(16.dp),
+            modifier = Modifier
+              .imePadding()
+              .systemBarsPadding()
+              .align(Alignment.BottomCenter)
+              .fillMaxWidth()
+              .padding(16.dp)
+              .focusRequester(focusRequester)
+              .border(2.dp, Color.White, RoundedCornerShape(16.dp))
+              .background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+              .padding(16.dp),
             state = rememberTextFieldState("Text field"),
             textStyle = TextStyle(fontSize = 16.sp, color = Color.White),
             cursorBrush = SolidColor(Color.Blue),
